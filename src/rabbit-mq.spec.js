@@ -27,6 +27,7 @@ describe('RabbitMQ', function() {
   let closeConnectionStub;
   let createChannelStub;
   let deleteQueueStub;
+  let purgeQueueStub;
   let connectionMock;
   let channelMock;
 
@@ -34,10 +35,12 @@ describe('RabbitMQ', function() {
     sendToQueueStub = sandbox.stub().returns(true);
     closeConnectionStub = sandbox.stub().returns(true);
     deleteQueueStub = sandbox.stub().returns(true);
+    purgeQueueStub = sandbox.stub().resolves(true);
 
     channelMock = {
       sendToQueue: sendToQueueStub,
-      deleteQueue: deleteQueueStub
+      deleteQueue: deleteQueueStub,
+      purgeQueue: purgeQueueStub
     };
 
     createChannelStub = sandbox.stub().resolves(channelMock);
@@ -135,6 +138,15 @@ describe('RabbitMQ', function() {
       new Buffer(JSON.stringify(data)),
       { headers: { groupBy } }
     );
+  });
+
+  it('#purge should empty the queue', async function() {
+    await subject.connect();
+    await subject.createChannel();
+
+    await subject.purge();
+
+    expect(channelMock.purgeQueue).to.have.been.calledWith(queueName);
   });
 
   it('#closeConnection should close the rabbitMq connection', async function() {

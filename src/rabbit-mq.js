@@ -61,6 +61,10 @@ class RabbitMq {
     );
   }
 
+  async purge() {
+    await this._channel.purgeQueue(this.queueName);
+  }
+
   getChannel() {
     return this._channel;
   }
