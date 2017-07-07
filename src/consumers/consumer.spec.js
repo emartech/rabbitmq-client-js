@@ -10,9 +10,9 @@ const expect = chai.expect;
 
 const amqp = require('amqplib');
 const RabbitMQConsumer = require('./consumer');
-const RabbitMQ = require('./rabbit-mq');
-const RabbitMQSingleton = require('../');
-const RetryableError = require('./exceptions/retryable-error');
+const RabbitMQ = require('../rabbit-mq/rabbit-mq');
+const RabbitMQSingleton = require('../rabbit-mq/index');
+const RetryableError = require('../exceptions/retryable-error');
 
 const channelName = 'test';
 const loggerName = 'test';

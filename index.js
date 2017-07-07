@@ -1,16 +1,11 @@
 'use strict';
 
-const RabbitMq = require('./src/rabbit-mq');
-
-let channels = {};
-let connections = {};
+const RabbitMq = require('./src/rabbit-mq/index');
+const Consumer = require('./src/consumers/consumer');
+const RetryableError = require('./src/exceptions/retryable-error');
 
 module.exports = {
-  create: async (amqpConfig, queueName, connectionType) => {
-    const rabbitMq = new RabbitMq(amqpConfig, queueName, connectionType);
-    await rabbitMq.connect(connections);
-    await rabbitMq.createChannel(channels);
-
-    return rabbitMq;
-  }
+  RabbitMq,
+  Consumer,
+  RetryableError
 };

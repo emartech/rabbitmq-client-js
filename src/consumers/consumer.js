@@ -1,7 +1,7 @@
 'use strict';
 
 const _ = require('lodash');
-const RabbitMq = require('../');
+const RabbitMq = require('../rabbit-mq/index');
 
 class RabbitMqConsumer {
 
