@@ -73,10 +73,6 @@ class RabbitMqConsumer {
           }
         }
       });
-
-      process.on('uncaughtException', error => {
-        logger.error('Consumer uncaught error', error.message, JSON.stringify({ error: error }));
-      });
     } catch (error) {
       logger.error('Consumer initialization error', error.message, JSON.stringify({ error: error }));
     }
