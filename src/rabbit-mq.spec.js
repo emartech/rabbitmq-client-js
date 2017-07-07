@@ -23,31 +23,19 @@ describe('RabbitMQ', function() {
   let subject;
   let sandbox = sinon.sandbox.create();
 
-  let sendToQueueStub;
-  let closeConnectionStub;
-  let createChannelStub;
-  let deleteQueueStub;
-  let purgeQueueStub;
   let connectionMock;
   let channelMock;
 
   beforeEach(async function() {
-    sendToQueueStub = sandbox.stub().returns(true);
-    closeConnectionStub = sandbox.stub().returns(true);
-    deleteQueueStub = sandbox.stub().returns(true);
-    purgeQueueStub = sandbox.stub().resolves(true);
-
     channelMock = {
-      sendToQueue: sendToQueueStub,
-      deleteQueue: deleteQueueStub,
-      purgeQueue: purgeQueueStub
+      sendToQueue: sandbox.stub().returns(true),
+      deleteQueue: sandbox.stub().resolves(true),
+      purgeQueue: sandbox.stub().resolves(true)
     };
 
-    createChannelStub = sandbox.stub().resolves(channelMock);
-
     connectionMock = {
-      createChannel: createChannelStub,
-      close: closeConnectionStub
+      createChannel: sandbox.stub().resolves(channelMock),
+      close: sandbox.stub().returns(true)
     };
 
     sandbox.stub(amqp, 'connect').resolves(connectionMock);
@@ -123,7 +111,7 @@ describe('RabbitMQ', function() {
     await subject.connect();
     await subject.createChannel();
     subject.insert(data);
-    expect(sendToQueueStub).to.have.been.calledWith(queueName, new Buffer(JSON.stringify(data)));
+    expect(channelMock.sendToQueue).to.have.been.calledWith(queueName, new Buffer(JSON.stringify(data)));
   });
 
   it('#insertWithGroupBy should call sentToQueue', async function() {
@@ -133,7 +121,7 @@ describe('RabbitMQ', function() {
     await subject.createChannel();
 
     subject.insertWithGroupBy(groupBy, data);
-    expect(sendToQueueStub).to.have.been.calledWith(
+    expect(channelMock.sendToQueue).to.have.been.calledWith(
       queueName,
       new Buffer(JSON.stringify(data)),
       { headers: { groupBy } }
@@ -154,7 +142,7 @@ describe('RabbitMQ', function() {
     await subject.createChannel();
 
     await subject.closeConnection();
-    expect(closeConnectionStub).to.have.been.calledOnce;
+    expect(connectionMock.close).to.have.been.calledOnce;
   });
 
   it('#destroy should delete the queue', async function() {
@@ -162,6 +150,6 @@ describe('RabbitMQ', function() {
     await subject.createChannel();
 
     await subject.destroy();
-    expect(deleteQueueStub).to.have.been.calledWith(queueName);
+    expect(channelMock.deleteQueue).to.have.been.calledWith(queueName);
   });
 });
