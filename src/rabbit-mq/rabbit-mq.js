@@ -31,7 +31,7 @@ class RabbitMq {
     return { servername: parsedUrl.hostname };
   }
 
-  async createChannel(channels = {}) {
+  async createChannel(channels = {}, assertedQueues = {}) {
     this._validate();
 
     if (!channels[this._connectionType]) {
@@ -39,6 +39,14 @@ class RabbitMq {
     }
 
     this._channel = await channels[this._connectionType];
+    await this._assertQueue(assertedQueues);
+  }
+
+  async _assertQueue(assertedQueues) {
+    if (!assertedQueues[this.queueName]) {
+      assertedQueues[this.queueName] = this._channel.assertQueue(this.queueName, { durable: false });
+    }
+    await assertedQueues[this.queueName];
   }
 
   async closeConnection() {

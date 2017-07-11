@@ -20,7 +20,7 @@ const config = {
 const queueName = 'test-queue';
 
 describe('RabbitMQ', function() {
-  let subject;
+  let rabbitMq;
   let sandbox = sinon.sandbox.create();
 
   let connectionMock;
@@ -30,7 +30,8 @@ describe('RabbitMQ', function() {
     channelMock = {
       sendToQueue: sandbox.stub().returns(true),
       deleteQueue: sandbox.stub().resolves(true),
-      purgeQueue: sandbox.stub().resolves(true)
+      purgeQueue: sandbox.stub().resolves(true),
+      assertQueue: sandbox.stub().resolves(true)
     };
 
     connectionMock = {
@@ -39,7 +40,7 @@ describe('RabbitMQ', function() {
     };
 
     sandbox.stub(amqp, 'connect').resolves(connectionMock);
-    subject = new RabbitMq(config, queueName);
+    rabbitMq = new RabbitMq(config, queueName);
   });
 
   afterEach(async function() {
@@ -47,7 +48,7 @@ describe('RabbitMQ', function() {
   });
 
   it('#connect should call amqp connect with rigth parameters', async function() {
-    await subject.connect();
+    await rabbitMq.connect();
     expect(amqp.connect).to.have.been.calledWith(
       'amqp://test:secret@192.168.40.10:5672/cubebloc',
       { servername: '192.168.40.10' }
@@ -56,7 +57,7 @@ describe('RabbitMQ', function() {
 
   it('#connect cache the connection', async function() {
     const connections = {};
-    await subject.connect(connections);
+    await rabbitMq.connect(connections);
     const connection = await connections.default;
 
     expect(connection).to.be.equal(connectionMock);
@@ -67,60 +68,69 @@ describe('RabbitMQ', function() {
       close: sandbox.stub().resolves(true)
     };
     const connections = { default: Promise.resolve(localConnectionMock) };
-    await subject.connect(connections);
+    await rabbitMq.connect(connections);
 
-    await subject.closeConnection();
+    await rabbitMq.closeConnection();
     expect(localConnectionMock.close).to.have.been.calledOnce;
   });
 
   it('#createChannel should check if connection is ready', async function() {
-    await expect(subject.createChannel()).to.be.rejectedWith('No RabbitMQ connection');
-    await subject.connect();
-    await expect(subject.createChannel()).to.be.fulfilled;
+    await expect(rabbitMq.createChannel()).to.be.rejectedWith('No RabbitMQ connection');
+    await rabbitMq.connect();
+    await expect(rabbitMq.createChannel()).to.be.fulfilled;
   });
 
-  it('#createChannel should cache the channel', async function() {
+  it('#createChannel should cache the channel and assert the queue', async function() {
+    const assertQueueValue = { testing: 123 };
+    channelMock.assertQueue = sandbox.stub().resolves(assertQueueValue);
+
     const channels = {};
-    await subject.connect();
-    await subject.createChannel(channels);
+    const assertedQueues = {};
+    await rabbitMq.connect();
+    await rabbitMq.createChannel(channels, assertedQueues);
 
     const channel = await channels.default;
 
     expect(channel).to.be.equal(channelMock);
+    expect(channelMock.assertQueue).to.have.been.calledWith(queueName, { durable: false });
+    expect(await assertedQueues[queueName]).to.eq(assertQueueValue);
   });
 
-  it('#createChannel should reuse existing channel if it was already created', async function() {
-    const channels = { default: Promise.resolve('channel') };
+  it('#createChannel should reuse existing channel and assertQueue if it was already created', async function() {
+    const localChannelMock = Object.assign({}, channelMock);
+    const channels = { default: Promise.resolve(localChannelMock) };
 
-    await subject.connect();
-    await subject.createChannel(channels);
+    const assertedQueues = {};
+    assertedQueues[queueName] = 'called';
 
-    const channel = await channels.default;
+    await rabbitMq.connect();
+    await rabbitMq.createChannel(channels, assertedQueues);
 
-    expect(subject.getChannel()).to.be.equal(channel);
+    expect(await rabbitMq.getChannel()).to.be.eq(localChannelMock);
+    expect(localChannelMock.assertQueue).not.to.have.been.called;
   });
 
   it('#createChannel should check if queueName was set', async function() {
-    subject = new RabbitMq(config);
-    await subject.connect();
-    await expect(subject.createChannel()).to.be.rejectedWith('No RabbitMQ queue');
+    rabbitMq = new RabbitMq(config);
+    await rabbitMq.connect();
+    await expect(rabbitMq.createChannel()).to.be.rejectedWith('No RabbitMQ queue');
   });
 
   it('#insert should call sentToQueue', async function() {
     const data = { test: 'data' };
-    await subject.connect();
-    await subject.createChannel();
-    subject.insert(data);
+    await rabbitMq.connect();
+    await rabbitMq.createChannel();
+    rabbitMq.insert(data);
     expect(channelMock.sendToQueue).to.have.been.calledWith(queueName, new Buffer(JSON.stringify(data)));
   });
 
   it('#insertWithGroupBy should call sentToQueue', async function() {
     const groupBy = 'me.login';
     const data = { test: 'data' };
-    await subject.connect();
-    await subject.createChannel();
+    await rabbitMq.connect();
+    await rabbitMq.createChannel();
 
-    subject.insertWithGroupBy(groupBy, data);
+    rabbitMq.insertWithGroupBy(groupBy, data);
     expect(channelMock.sendToQueue).to.have.been.calledWith(
       queueName,
       new Buffer(JSON.stringify(data)),
@@ -129,27 +139,27 @@ describe('RabbitMQ', function() {
   });
 
   it('#purge should empty the queue', async function() {
-    await subject.connect();
-    await subject.createChannel();
+    await rabbitMq.connect();
+    await rabbitMq.createChannel();
 
-    await subject.purge();
+    await rabbitMq.purge();
 
     expect(channelMock.purgeQueue).to.have.been.calledWith(queueName);
   });
 
   it('#closeConnection should close the rabbitMq connection', async function() {
-    await subject.connect();
-    await subject.createChannel();
+    await rabbitMq.connect();
+    await rabbitMq.createChannel();
 
-    await subject.closeConnection();
+    await rabbitMq.closeConnection();
     expect(connectionMock.close).to.have.been.calledOnce;
   });
 
   it('#destroy should delete the queue', async function() {
-    await subject.connect();
-    await subject.createChannel();
+    await rabbitMq.connect();
+    await rabbitMq.createChannel();
 
-    await subject.destroy();
+    await rabbitMq.destroy();
     expect(channelMock.deleteQueue).to.have.been.calledWith(queueName);
   });
 });

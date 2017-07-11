@@ -40,7 +40,9 @@ describe('RabbitMQ Batch Consumer', function() {
     prefetchStub = sandbox.stub();
 
     const connectionMock = {
-      createChannel: () => Promise.resolve(true)
+      createChannel: () => Promise.resolve({
+        assertQueue: () => {}
+      })
     };
     sandbox.stub(amqp, 'connect').resolves(connectionMock);
 
