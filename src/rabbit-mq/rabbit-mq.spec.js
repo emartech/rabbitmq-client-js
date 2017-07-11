@@ -6,6 +6,8 @@ const chai = require('chai');
 const sinon = require('sinon');
 const chaiAsPromised = require('chai-as-promised');
 const sinonChai = require('sinon-chai');
+const EventEmitter = require('events');
+
 
 chai.use(sinonChai);
 chai.use(chaiAsPromised);
@@ -27,12 +29,12 @@ describe('RabbitMQ', function() {
   let channelMock;
 
   beforeEach(async function() {
-    channelMock = {
+    channelMock = Object.assign(new EventEmitter(), {
       sendToQueue: sandbox.stub().returns(true),
       deleteQueue: sandbox.stub().resolves(true),
       purgeQueue: sandbox.stub().resolves(true),
       assertQueue: sandbox.stub().resolves(true)
-    };
+    });
 
     connectionMock = {
       createChannel: sandbox.stub().resolves(channelMock),
@@ -161,5 +163,24 @@ describe('RabbitMQ', function() {
 
     await rabbitMq.destroy();
     expect(channelMock.deleteQueue).to.have.been.calledWith(queueName);
+  });
+
+  describe('with dead channel', function() {
+
+    it('should remove channel from the cache', async function() {
+      const channels = {};
+      const assertedQueues = {};
+
+      await rabbitMq.connect();
+      await rabbitMq.createChannel(channels, assertedQueues);
+
+      expect(channels.default).not.to.be.undefined;
+      expect(assertedQueues[queueName]).not.to.be.undefined;
+
+      rabbitMq.getChannel().emit('close');
+      expect(channels.default).to.be.undefined;
+      expect(assertedQueues[queueName]).to.be.undefined;
+    });
+
   });
 });

@@ -4,6 +4,7 @@ require('dotenv').config({ silent: true });
 
 const url = require('url');
 const amqp = require('amqplib');
+const logger = require('logentries-logformat')('rabbit-mq-client');
 
 class RabbitMq {
   constructor(amqpConfig, queueName, connectionType = 'default') {
@@ -33,12 +34,28 @@ class RabbitMq {
 
   async createChannel(channels = {}, assertedQueues = {}) {
     this._validate();
+    let registerCloseListener = false;
 
     if (!channels[this._connectionType]) {
       channels[this._connectionType] = this._connection.createChannel();
+      registerCloseListener = true;
     }
 
     this._channel = await channels[this._connectionType];
+
+
+    if (registerCloseListener) {
+      this._channel.on('error', error => {
+        logger.error('Channel error', error.message, JSON.stringify(error));
+      });
+
+      this._channel.on('close', () => {
+        delete channels[this._connectionType];
+        delete assertedQueues[this.queueName];
+        logger.error('Channel close');
+      });
+    }
+
     await this._assertQueue(assertedQueues);
   }
 
