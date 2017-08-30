@@ -38,31 +38,45 @@ class RabbitMq {
   async createChannel() {
     this._validate();
 
-    if (!this._channelProgress) {
-      this._channelProgress = this._connection.createChannel();
-      this._channel = await this._channelProgress;
-
-      this._channel.on('error', error => {
-        logger.error('Channel error', error.message, JSON.stringify(error));
-      });
-
-      this._channel.on('close', () => {
-        this._channel = null;
-        this._channelProgress = null;
-        this._queueAsserted = false;
-        logger.error('Channel close');
-      });
-
-      await this._assertQueue();
+    if (!this._channelCreationProgress) {
+      this._channelCreationProgress = this._connection.createChannel().
+        then(channel => {
+          this._channel = channel;
+          return channel;
+        }).
+        then(this._handleErrorEvent.bind(this)).
+        then(this._handleCloseEvent.bind(this)).
+        then(this._assertQueue.bind(this));
     }
+
+    await this._channelCreationProgress;
   }
 
-  async _assertQueue() {
+  _handleErrorEvent(channel) {
+    channel.on('error', error => {
+      logger.error('Channel error', error.message, JSON.stringify(error));
+    });
+
+    return channel;
+  }
+
+  _handleCloseEvent(channel) {
+    channel.on('close', () => {
+      this._channel = null;
+      this._channelCreationProgress = null;
+      this._queueAsserted = false;
+      logger.error('Channel close');
+    });
+
+    return channel;
+  }
+
+  async _assertQueue(channel) {
     if (!this._queueAsserted) {
       this._queueAsserted = true;
     }
 
-    await this._channel.assertQueue(this.queueName, this.queueOptions);
+    await channel.assertQueue(this.queueName, this.queueOptions);
   }
 
   async closeConnection() {
