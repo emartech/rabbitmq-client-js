@@ -65,29 +65,16 @@ describe('RabbitMQ', function() {
     channelMock.assertQueue = sandbox.stub().resolves(assertQueueValue);
 
     const channels = {};
-    const assertedQueues = {};
     await rabbitMq.connect();
-    await rabbitMq.createChannel(channels, assertedQueues);
+    await rabbitMq.createChannel(channels);
+    await rabbitMq.createChannel(channels);
 
     const channel = await channels.default;
 
     expect(channel).to.be.equal(channelMock);
     expect(channelMock.assertQueue).to.have.been.calledWith(queueName, { durable: true, autoDelete: true });
-    expect(await assertedQueues[queueName]).to.eq(assertQueueValue);
-  });
-
-  it('#createChannel should reuse existing channel and assertQueue if it was already created', async function() {
-    const localChannelMock = Object.assign({}, channelMock);
-    const channels = { default: Promise.resolve(localChannelMock) };
-
-    const assertedQueues = {};
-    assertedQueues[queueName] = 'called';
-
-    await rabbitMq.connect();
-    await rabbitMq.createChannel(channels, assertedQueues);
-
-    expect(await rabbitMq.getChannel()).to.be.eq(localChannelMock);
-    expect(localChannelMock.assertQueue).not.to.have.been.called;
+    expect(channelMock.assertQueue).to.have.been.calledOnce;
+    expect(connectionMock.createChannel).to.have.been.calledOnce;
   });
 
   it('#createChannel should check if queueName was set', async function() {
@@ -141,24 +128,5 @@ describe('RabbitMQ', function() {
 
     await rabbitMq.destroy();
     expect(channelMock.deleteQueue).to.have.been.calledWith(queueName);
-  });
-
-  describe('with dead channel', function() {
-
-    it('should remove channel from the cache', async function() {
-      const channels = {};
-      const assertedQueues = {};
-
-      await rabbitMq.connect();
-      await rabbitMq.createChannel(channels, assertedQueues);
-
-      expect(channels.default).not.to.be.undefined;
-      expect(assertedQueues[queueName]).not.to.be.undefined;
-
-      rabbitMq.getChannel().emit('close');
-      expect(channels.default).to.be.undefined;
-      expect(assertedQueues[queueName]).to.be.undefined;
-    });
-
   });
 });
