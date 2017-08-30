@@ -64,14 +64,10 @@ describe('RabbitMQ', function() {
     const assertQueueValue = { testing: 123 };
     channelMock.assertQueue = sandbox.stub().resolves(assertQueueValue);
 
-    const channels = {};
     await rabbitMq.connect();
-    await rabbitMq.createChannel(channels);
-    await rabbitMq.createChannel(channels);
+    await rabbitMq.createChannel();
+    await rabbitMq.createChannel();
 
-    const channel = await channels.default;
-
-    expect(channel).to.be.equal(channelMock);
     expect(channelMock.assertQueue).to.have.been.calledWith(queueName, { durable: true, autoDelete: true });
     expect(channelMock.assertQueue).to.have.been.calledOnce;
     expect(connectionMock.createChannel).to.have.been.calledOnce;

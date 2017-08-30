@@ -14,6 +14,7 @@ class RabbitMq {
     this._connectionType = connectionType;
     this._connection = null;
     this._assertedQueues = {};
+    this._channels = {};
   }
 
   async connect() {
@@ -34,17 +35,16 @@ class RabbitMq {
     return { servername: parsedUrl.hostname };
   }
 
-  async createChannel(channels = {}) {
+  async createChannel() {
     this._validate();
     let registerCloseListener = false;
 
-    if (!channels[this._connectionType]) {
-      channels[this._connectionType] = this._connection.createChannel();
+    if (!this._channels[this._connectionType]) {
+      this._channels[this._connectionType] = this._connection.createChannel();
       registerCloseListener = true;
     }
 
-    this._channel = await channels[this._connectionType];
-
+    this._channel = await this._channels[this._connectionType];
 
     if (registerCloseListener) {
       this._channel.on('error', error => {
@@ -52,7 +52,8 @@ class RabbitMq {
       });
 
       this._channel.on('close', () => {
-        delete channels[this._connectionType];
+        delete this._channels[this._connectionType];
+        delete this._assertedQueues[this.queueName];
         logger.error('Channel close');
       });
     }
