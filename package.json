@@ -3,7 +3,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "mocha --reporter spec ./src/*.spec.js ./src/**/*.spec.js",
+    "test": "mocha --reporter spec ./src/setup-tests.spec.js ./src/*.spec.js ./src/**/*.spec.js",
     "semantic-release": "CI=true semantic-release pre && npm publish --access public && semantic-release post"
   },
   "repository": {
