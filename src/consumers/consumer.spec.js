@@ -20,6 +20,9 @@ const loggerName = 'test';
 const amqpConfig = {
   default: {
     url: 'amqp://test:secret@192.168.40.10:5672/cubebloc'
+  },
+  test: {
+    url: 'amqp://test:test@test:5672/test'
   }
 };
 
@@ -82,6 +85,38 @@ describe('RabbitMQ Consumer', function() {
     await rabbitMQConsumer.process();
 
     expect(rabbitMqStub).have.been.calledWith(amqpConfig, channelName);
+  });
+
+  it('should create a RabbitMQ connection with the right preferences', async function() {
+    const configuration = {
+      logger: loggerName,
+      channel: channelName,
+      connectionType: 'test',
+      onMessage: async function() {}
+    };
+
+    const rabbitMqStub = sandbox.stub(RabbitMQSingleton, 'create');
+
+    const rabbitMQConsumer = RabbitMQConsumer.create(amqpConfig, configuration);
+    await rabbitMQConsumer.process();
+
+    expect(rabbitMqStub).have.been.calledWith(amqpConfig, channelName, 'test');
+  });
+
+  it('should create a RabbitMQ connection with the desired queue options', async function() {
+    const configuration = {
+      logger: loggerName,
+      channel: channelName,
+      queueOptions: { durable: true },
+      onMessage: async function() {}
+    };
+
+    const rabbitMqStub = sandbox.stub(RabbitMQSingleton, 'create');
+
+    const rabbitMQConsumer = RabbitMQConsumer.create(amqpConfig, configuration);
+    await rabbitMQConsumer.process();
+
+    expect(rabbitMqStub).have.been.calledWith(amqpConfig, channelName, 'default', { durable: true });
   });
 
   it('should not retry when message is not parsable as JSON', async function() {

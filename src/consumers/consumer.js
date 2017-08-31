@@ -14,6 +14,8 @@ class RabbitMqConsumer {
     this._loggerRules = configuration.loggerRules || {};
     this._autoNackTime = configuration.autoNackTime || false;
     this._amqpConfig = amqpConfig;
+    this._queueOptions = configuration.queueOptions;
+    this._connectionType = configuration.connectionType || 'default';
   }
 
   async process() {
@@ -21,7 +23,7 @@ class RabbitMqConsumer {
     logger.log('[AMQP] Process');
 
     try {
-      const rabbitMq = await RabbitMq.create(this._amqpConfig, this._channel);
+      const rabbitMq = await RabbitMq.create(this._amqpConfig, this._channel, this._connectionType, this._queueOptions);
       const channel = rabbitMq.getChannel();
       await channel.prefetch(this._prefetchCount);
 
