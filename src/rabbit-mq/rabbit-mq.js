@@ -7,11 +7,10 @@ const amqp = require('amqplib');
 const logger = require('logentries-logformat')('rabbit-mq-client');
 
 class RabbitMq {
-  constructor(amqpConfig, queueName, connectionType = 'default', queueOptions = {}) {
+  constructor(amqpConfig, queueName, queueOptions = {}) {
     this.queueName = queueName;
     this.queueOptions = queueOptions;
     this._amqpConfig = amqpConfig;
-    this._connectionType = connectionType;
     this._connection = null;
     this._queueAsserted = false;
     this._channel = null;
