@@ -40,5 +40,6 @@
     "dotenv": "^4.0.0",
     "lodash": "^4.17.4",
     "logentries-logformat": "^0.2.0"
-  }
+  },
+  "version": "2.0"
 }
