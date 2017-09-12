@@ -21,9 +21,6 @@ const loggerName = 'test';
 const amqpConfig = {
   default: {
     url: 'amqp://test:secret@192.168.40.10:5672/cubebloc'
-  },
-  special: {
-    url: 'amqp://spec:ial@192.168.40.10:5672/special'
   }
 };
 
@@ -44,8 +41,7 @@ describe('RabbitMQ Batch Consumer', function() {
 
     const connectionMock = {
       createChannel: () => Promise.resolve({
-        assertQueue: () => {},
-        on: () => {}
+        assertQueue: () => {}
       })
     };
     sandbox.stub(amqp, 'connect').resolves(connectionMock);
