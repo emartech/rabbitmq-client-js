@@ -13,7 +13,6 @@ class RabbitMq {
     this._amqpConfig = amqpConfig;
     this._connectionType = connectionType;
     this._connection = null;
-    this._assertedQueues = {};
   }
 
   async connect() {
@@ -34,7 +33,7 @@ class RabbitMq {
     return { servername: parsedUrl.hostname };
   }
 
-  async createChannel(channels = {}) {
+  async createChannel(channels = {}, assertedQueues = {}) {
     this._validate();
     let registerCloseListener = false;
 
@@ -53,18 +52,19 @@ class RabbitMq {
 
       this._channel.on('close', () => {
         delete channels[this._connectionType];
+        delete assertedQueues[this.queueName];
         logger.error('Channel close');
       });
     }
 
-    await this._assertQueue();
+    await this._assertQueue(assertedQueues);
   }
 
-  async _assertQueue() {
-    if (!this._assertedQueues[this.queueName]) {
-      this._assertedQueues[this.queueName] = this._channel.assertQueue(this.queueName, this.queueOptions);
+  async _assertQueue(assertedQueues) {
+    if (!assertedQueues[this.queueName]) {
+      assertedQueues[this.queueName] = this._channel.assertQueue(this.queueName, this.queueOptions);
     }
-    await this._assertedQueues[this.queueName];
+    await assertedQueues[this.queueName];
   }
 
   async closeConnection() {
