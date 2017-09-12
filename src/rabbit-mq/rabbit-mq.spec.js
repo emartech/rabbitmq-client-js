@@ -35,7 +35,7 @@ describe('RabbitMQ', function() {
     };
 
     sandbox.stub(amqp, 'connect').resolves(connectionMock);
-    rabbitMq = Pool.createFromNewPool(config, 'default').getClient(queueName, { durable: true, autoDelete: true });
+    rabbitMq = Pool.create(config, 'default', false).getClient(queueName, { durable: true, autoDelete: true });
   });
 
   it('#connect should call amqp connect with rigth parameters', async function() {
@@ -74,7 +74,7 @@ describe('RabbitMQ', function() {
   });
 
   it('#createChannel should check if queueName was set', async function() {
-    rabbitMq = Pool.createFromNewPool(config, 'default').getClient();
+    rabbitMq = Pool.create(config, 'default', false).getClient();
     await rabbitMq.connect();
     await expect(rabbitMq.createChannel()).to.be.rejectedWith('No RabbitMQ queue');
   });

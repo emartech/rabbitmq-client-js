@@ -6,10 +6,10 @@ const connections = {};
 
 class RabbitMQPool {
 
-  constructor(amqpConfig, connectionType = 'default', pool = {}) {
+  constructor(amqpConfig, connectionType = 'default', useGlobalPool = true) {
     this._amqpConfig = amqpConfig;
     this._connectionType = connectionType;
-    this._connectionPool = pool;
+    this._connections = (useGlobalPool) ? connections : {};
   }
 
   getClient(queueName, queueOptions) {
@@ -23,27 +23,23 @@ class RabbitMQPool {
   }
 
   _saveConnection(connection) {
-    this._connectionPool[this._connectionType] = connection;
+    this._connections[this._connectionType] = connection;
   }
 
   _getConnection() {
-    return this._connectionPool[this._connectionType];
+    return this._connections[this._connectionType];
   }
 
   _connectionExists() {
-    return !!this._connectionPool[this._connectionType];
+    return !!this._connections[this._connectionType];
   }
 
   _getAmqpConfig() {
     return this._amqpConfig[this._connectionType];
   }
 
-  static create(amqpConfig, connectionType) {
-    return new RabbitMQPool(amqpConfig, connectionType, connections);
-  }
-
-  static createFromNewPool(amqpConfig, connectionType) {
-    return new RabbitMQPool(amqpConfig, connectionType, {});
+  static create(amqpConfig, connectionType, useGlobalPool = true) {
+    return new RabbitMQPool(amqpConfig, connectionType, useGlobalPool);
   }
 }
 
