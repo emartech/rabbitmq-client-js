@@ -2,8 +2,17 @@
 
 const amqp = require('amqplib');
 const RabbitMq = require('./rabbit-mq');
+const chai = require('chai');
+const sinon = require('sinon');
+const chaiAsPromised = require('chai-as-promised');
+const sinonChai = require('sinon-chai');
 const EventEmitter = require('events');
 
+
+chai.use(sinonChai);
+chai.use(chaiAsPromised);
+
+const expect = chai.expect;
 
 const config = {
   default: {
@@ -14,14 +23,12 @@ const queueName = 'test-queue';
 
 describe('RabbitMQ', function() {
   let rabbitMq;
-  let sandbox;
+  let sandbox = sinon.sandbox.create();
 
   let connectionMock;
   let channelMock;
 
   beforeEach(async function() {
-    sandbox = this.sandbox;
-
     channelMock = Object.assign(new EventEmitter(), {
       sendToQueue: sandbox.stub().returns(true),
       deleteQueue: sandbox.stub().resolves(true),
@@ -36,6 +43,10 @@ describe('RabbitMQ', function() {
 
     sandbox.stub(amqp, 'connect').resolves(connectionMock);
     rabbitMq = new RabbitMq(config, queueName);
+  });
+
+  afterEach(async function() {
+    sandbox.restore();
   });
 
   it('#connect should call amqp connect with rigth parameters', async function() {
