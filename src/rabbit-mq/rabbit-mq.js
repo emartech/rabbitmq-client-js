@@ -13,20 +13,20 @@ class RabbitMq {
     this._amqpConfig = amqpConfig;
     this._connectionType = connectionType;
     this._connection = null;
-    this._queueAsserted = false;
-    this._channel = null;
+    this._assertedQueues = {};
+    this._channels = {};
   }
 
   async connect() {
-    if (!this._connectionProgress) {
+    if (!this._connectionPromise) {
       const options = this._getOpts();
-      this._connectionProgress = amqp.connect(this._config.url, options);
-      this._connectionProgress.then(connection => {
+      this._connectionPromise = amqp.connect(this._config.url, options);
+      this._connectionPromise.then(connection => {
         this._connection = connection;
       });
     }
 
-    await this._connectionProgress;
+    await this._connectionPromise;
   }
 
   _getOpts() {
@@ -37,32 +37,35 @@ class RabbitMq {
 
   async createChannel() {
     this._validate();
+    let registerCloseListener = false;
 
-    if (!this._channelProgress) {
-      this._channelProgress = this._connection.createChannel();
-      this._channel = await this._channelProgress;
+    if (!this._channels[this._connectionType]) {
+      this._channels[this._connectionType] = this._connection.createChannel();
+      registerCloseListener = true;
+    }
 
+    this._channel = await this._channels[this._connectionType];
+
+    if (registerCloseListener) {
       this._channel.on('error', error => {
         logger.error('Channel error', error.message, JSON.stringify(error));
       });
 
       this._channel.on('close', () => {
-        this._channel = null;
-        this._channelProgress = null;
-        this._queueAsserted = false;
+        delete this._channels[this._connectionType];
+        delete this._assertedQueues[this.queueName];
         logger.error('Channel close');
       });
-
-      await this._assertQueue();
     }
+
+    await this._assertQueue();
   }
 
   async _assertQueue() {
-    if (!this._queueAsserted) {
-      this._queueAsserted = true;
+    if (!this._assertedQueues[this.queueName]) {
+      this._assertedQueues[this.queueName] = this._channel.assertQueue(this.queueName, this.queueOptions);
     }
-
-    await this._channel.assertQueue(this.queueName, this.queueOptions);
+    await this._assertedQueues[this.queueName];
   }
 
   async closeConnection() {
