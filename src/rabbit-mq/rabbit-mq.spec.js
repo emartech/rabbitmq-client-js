@@ -1,7 +1,7 @@
 'use strict';
 
 const amqp = require('amqplib');
-const Pool = require('./pool');
+const RabbitMq = require('./rabbit-mq');
 const EventEmitter = require('events');
 
 
@@ -35,7 +35,7 @@ describe('RabbitMQ', function() {
     };
 
     sandbox.stub(amqp, 'connect').resolves(connectionMock);
-    rabbitMq = Pool.create(config, 'default', false).getClient(queueName, { durable: true, autoDelete: true });
+    rabbitMq = new RabbitMq(config, queueName);
   });
 
   it('#connect should call amqp connect with rigth parameters', async function() {
@@ -49,9 +49,20 @@ describe('RabbitMQ', function() {
   it('#connect cache the connection', async function() {
     const connections = {};
     await rabbitMq.connect(connections);
+    const connection = await connections.default;
+
+    expect(connection).to.be.equal(connectionMock);
+  });
+
+  it('#connect should reuse existing connection if it was already created', async function() {
+    const localConnectionMock = {
+      close: sandbox.stub().resolves(true)
+    };
+    const connections = { default: Promise.resolve(localConnectionMock) };
     await rabbitMq.connect(connections);
 
-    expect(amqp.connect).to.have.been.calledOnce;
+    await rabbitMq.closeConnection();
+    expect(localConnectionMock.close).to.have.been.calledOnce;
   });
 
   it('#createChannel should check if connection is ready', async function() {
@@ -72,7 +83,7 @@ describe('RabbitMQ', function() {
     const channel = await channels.default;
 
     expect(channel).to.be.equal(channelMock);
-    expect(channelMock.assertQueue).to.have.been.calledWith(queueName, { durable: true, autoDelete: true });
+    expect(channelMock.assertQueue).to.have.been.calledWith(queueName, { durable: false });
     expect(await assertedQueues[queueName]).to.eq(assertQueueValue);
   });
 
@@ -91,7 +102,7 @@ describe('RabbitMQ', function() {
   });
 
   it('#createChannel should check if queueName was set', async function() {
-    rabbitMq = Pool.create(config, 'default', false).getClient();
+    rabbitMq = new RabbitMq(config);
     await rabbitMq.connect();
     await expect(rabbitMq.createChannel()).to.be.rejectedWith('No RabbitMQ queue');
   });
