@@ -77,18 +77,6 @@ describe('RabbitMQ Batch Consumer', function() {
     expect(rabbitMqSpy).have.been.calledWith(amqpConfig, channelName, 'special');
   });
 
-  it('should create a RabbitMQ connection with the defined queueOptions', async function() {
-    const rabbitMqSpy = sandbox.spy(RabbitMQSingleton, 'create');
-
-    stubRabbitMq();
-    await createConsumer({
-      connectionType: 'special',
-      queueOptions: { durable: true }
-    });
-
-    expect(rabbitMqSpy).have.been.calledWith(amqpConfig, channelName, 'special', { durable: true });
-  });
-
   it('should call onMessages with batched messages', async function() {
     const message1 = createMessage({ content: '{"foo":"bar"}' });
     const message2 = createMessage({ content: '{"abc":"123"}' });

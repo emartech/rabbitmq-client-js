@@ -21,7 +21,6 @@ class RabbitMqBatchConsumer {
     });
     this._inProgress = 0;
     this._consumerCanceled = false;
-    this._queueOptions = configuration.queueOptions;
 
     if (this._prefetchCount < this._batchSize) {
       throw new Error('Batch Consumer prefetchCount should be larger than batchSize');
@@ -60,7 +59,7 @@ class RabbitMqBatchConsumer {
 
   async _setupRabbitMqChannel() {
     if (!this._rabbitMqChannel) {
-      this._rabbitMq = await RabbitMq.create(this._amqpConfig, this._channel, this._connectionType, this._queueOptions);
+      this._rabbitMq = await RabbitMq.create(this._amqpConfig, this._channel, this._connectionType);
       this._rabbitMqChannel = this._rabbitMq.getChannel();
       await this._rabbitMqChannel.prefetch(this._prefetchCount);
     }
