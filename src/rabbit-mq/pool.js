@@ -15,7 +15,7 @@ class RabbitMQPool {
   getClient(queueName, queueOptions) {
     if (this._connectionExists() === false) {
       const amqpConfig = this._getAmqpConfig();
-      const connection = new RabbitMq(amqpConfig, queueName, queueOptions);
+      const connection = new RabbitMq(amqpConfig, queueName, this._connectionType, queueOptions);
       this._saveConnection(connection);
     }
 
