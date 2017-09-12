@@ -15,16 +15,16 @@ class RabbitMq {
     this._connection = null;
   }
 
-  async connect() {
-    if (!this._connectionPromise) {
-      const options = this._getOpts();
-      this._connectionPromise = amqp.connect(this._config.url, options);
-      this._connectionPromise.then(connection => {
-        this._connection = connection;
-      });
+  async connect(connections = {}) {
+    if (connections[this._connectionType]) {
+      this._connection = await connections[this._connectionType];
+      return;
     }
 
-    await this._connectionPromise;
+    const opts = this._getOpts();
+    connections[this._connectionType] = amqp.connect(this._config.url, opts);
+
+    this._connection = await connections[this._connectionType];
   }
 
   _getOpts() {
