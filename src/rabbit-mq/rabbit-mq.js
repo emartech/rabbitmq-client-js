@@ -74,16 +74,18 @@ class RabbitMq {
     await this._channel.deleteQueue(this.queueName);
   }
 
-  insert(data) {
-    return this._channel.sendToQueue(this.queueName, new Buffer(JSON.stringify(data)));
-  }
-
-  insertWithGroupBy(groupBy, data) {
+  insert(data, options = {}) {
     return this._channel.sendToQueue(
       this.queueName,
       new Buffer(JSON.stringify(data)),
-      { headers: { groupBy } }
+      options
     );
+  }
+
+  insertWithGroupBy(groupBy, data, options = {}) {
+    const insertOptions = Object.assign({}, options, { headers: { groupBy } });
+
+    return this.insert(data, insertOptions);
   }
 
   async purge() {

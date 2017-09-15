@@ -126,6 +126,15 @@ describe('RabbitMQ', function() {
     expect(channelMock.sendToQueue).to.have.been.calledWith(queueName, new Buffer(JSON.stringify(data)));
   });
 
+  it('#insert should support options parameter', async function() {
+    const data = { test: 'data' };
+    const options = { test: 'ing' };
+    await rabbitMq.connect();
+    await rabbitMq.createChannel();
+    rabbitMq.insert(data, options);
+    expect(channelMock.sendToQueue).to.have.been.calledWith(queueName, new Buffer(JSON.stringify(data)), options);
+  });
+
   it('#insertWithGroupBy should call sentToQueue', async function() {
     const groupBy = 'me.login';
     const data = { test: 'data' };
@@ -137,6 +146,21 @@ describe('RabbitMQ', function() {
       queueName,
       new Buffer(JSON.stringify(data)),
       { headers: { groupBy } }
+    );
+  });
+
+  it('#insertWithGroupBy should support options parameter', async function() {
+    const groupBy = 'me.login';
+    const data = { test: 'data' };
+    const options = { test: 'ing' };
+    await rabbitMq.connect();
+    await rabbitMq.createChannel();
+
+    rabbitMq.insertWithGroupBy(groupBy, data, options);
+    expect(channelMock.sendToQueue).to.have.been.calledWith(
+      queueName,
+      new Buffer(JSON.stringify(data)),
+      Object.assign({ headers: { groupBy } }, options)
     );
   });
 
