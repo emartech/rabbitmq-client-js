@@ -82,7 +82,7 @@ describe('RabbitMQ', function() {
     await expect(rabbitMq.createChannel()).to.be.fulfilled;
   });
 
-  it('#createChannel should cache the channel and assert the queue', async function() {
+  it('#createChannel should cache the channel and assert the queue with default queue options', async function() {
     const assertQueueValue = { testing: 123 };
     channelMock.assertQueue = sandbox.stub().resolves(assertQueueValue);
 
@@ -96,6 +96,19 @@ describe('RabbitMQ', function() {
     expect(channel).to.be.equal(channelMock);
     expect(channelMock.assertQueue).to.have.been.calledWith(queueName, { durable: false });
     expect(await assertedQueues[queueName]).to.eq(assertQueueValue);
+  });
+
+  it('#createChannel should cache the channel and assert the queue', async function() {
+    const assertQueueValue = { testing: 123 };
+    channelMock.assertQueue = sandbox.stub().resolves(assertQueueValue);
+
+    const channels = {};
+    const assertedQueues = {};
+    const queueOptions = { durable: true};
+    await rabbitMq.connect();
+    await rabbitMq.createChannel(channels, assertedQueues, queueOptions);
+
+    expect(channelMock.assertQueue).to.have.been.calledWith(queueName, { durable: true });
   });
 
   it('#createChannel should reuse existing channel and assertQueue if it was already created', async function() {
