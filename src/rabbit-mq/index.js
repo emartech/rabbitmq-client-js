@@ -7,10 +7,10 @@ let connections = {};
 let assertedQueues = {};
 
 module.exports = {
-  create: async (amqpConfig, queueName, connectionType) => {
+  create: async (amqpConfig, queueName, connectionType, queueOptions) => {
     const rabbitMq = new RabbitMq(amqpConfig, queueName, connectionType);
     await rabbitMq.connect(connections);
-    await rabbitMq.createChannel(channels, assertedQueues);
+    await rabbitMq.createChannel(channels, assertedQueues, queueOptions);
 
     return rabbitMq;
   }

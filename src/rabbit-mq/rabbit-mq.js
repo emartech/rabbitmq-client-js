@@ -32,7 +32,7 @@ class RabbitMq {
     return { servername: parsedUrl.hostname };
   }
 
-  async createChannel(channels = {}, assertedQueues = {}) {
+  async createChannel(channels = {}, assertedQueues = {}, queueOptions = {}) {
     this._validate();
     let registerCloseListener = false;
 
@@ -56,12 +56,14 @@ class RabbitMq {
       });
     }
 
-    await this._assertQueue(assertedQueues);
+    await this._assertQueue(assertedQueues, queueOptions);
   }
 
-  async _assertQueue(assertedQueues) {
+  async _assertQueue(assertedQueues, queueOptions) {
+    const defaultQueueOptions = { durable: false };
+    const options = Object.assign({}, defaultQueueOptions, queueOptions);
     if (!assertedQueues[this.queueName]) {
-      assertedQueues[this.queueName] = this._channel.assertQueue(this.queueName, { durable: false });
+      assertedQueues[this.queueName] = this._channel.assertQueue(this.queueName, options);
     }
     await assertedQueues[this.queueName];
   }
