@@ -30,6 +30,7 @@ class RabbitMqBatchConsumer {
 
   async process() {
     try {
+      this._consumerCanceled = false;
       await this._setupRabbitMqChannel();
       this._consumer = await this._rabbitMqChannel.consume(this._channel, (message) => {
         this._inProgress++;
@@ -68,7 +69,7 @@ class RabbitMqBatchConsumer {
 
   async _closeChannel() {
     if (this._inProgress) {
-      return setTimeout(this._closeChannel, 100);
+      return setTimeout(this._closeChannel.bind(this), 100);
     }
     await this._rabbitMqChannel.close();
     await this._rabbitMq.closeConnection();
@@ -76,13 +77,22 @@ class RabbitMqBatchConsumer {
   };
 
   async _closeAndCancelChannel() {
-    if (this._consumerCanceled) {
+    if (!this.stopConsumption()) {
       return;
+    }
+    await this._closeChannel();
+  };
+
+  async stopConsumption() {
+    if (this._consumerCanceled || !this._consumer) {
+      return false;
     }
     this._consumerCanceled = true;
     await this._rabbitMqChannel.cancel(this._consumer.consumerTag);
-    await this._closeChannel();
-  };
+    this._consumer = undefined;
+
+    return true;
+  }
 
   _consumerSuccess(groupBy, messageObjects) {
     this._logger.log('BatchConsumer success', {

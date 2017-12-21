@@ -34,6 +34,7 @@ describe('RabbitMQ Batch Consumer', function() {
   let ackStub;
   let nackStub;
   let prefetchStub;
+  let cancelStub;
 
   beforeEach(async function() {
     consume = null;
@@ -41,6 +42,7 @@ describe('RabbitMQ Batch Consumer', function() {
     ackStub = sandbox.stub();
     nackStub = sandbox.stub();
     prefetchStub = sandbox.stub();
+    cancelStub = sandbox.stub();
 
     const connectionMock = {
       createChannel: () => Promise.resolve({
@@ -163,23 +165,76 @@ describe('RabbitMQ Batch Consumer', function() {
 
   });
 
+  describe('#stopConsumption', function() {
+    it('should cancel the consumer', async function() {
+      stubRabbitMq();
+      const configuration = getTestConfiguration();
+      const rabbitMqBatchConsumer = RabbitMQBatchConsumer.create(amqpConfig, configuration);
+      await rabbitMqBatchConsumer.process();
+      const result = await rabbitMqBatchConsumer.stopConsumption();
+      expect(cancelStub).to.have.been.calledWith('testTag');
+      expect(result).to.eql(true);
+    });
+
+    it('should return false if there is nothing to stop', async function() {
+      stubRabbitMq();
+      const configuration = getTestConfiguration();
+      const rabbitMqBatchConsumer = RabbitMQBatchConsumer.create(amqpConfig, configuration);
+      const result = await rabbitMqBatchConsumer.stopConsumption();
+      expect(result).to.eql(false);
+    });
+
+    it('should be able to restart the consumption', async function() {
+      stubRabbitMq();
+      const onMessageStub = this.sandbox.stub().returns(Promise.resolve());
+      const testMessage = createMessage({ content: '{"foo":"bar"}' });
+
+      const configuration = getTestConfiguration({
+        onMessages: onMessageStub
+      });
+      const rabbitMqBatchConsumer = RabbitMQBatchConsumer.create(amqpConfig, configuration);
+      await rabbitMqBatchConsumer.process();
+
+      const firstConsumer = consume;
+      await consume(testMessage);
+      clock.tick(60000);
+
+      await rabbitMqBatchConsumer.stopConsumption();
+      await rabbitMqBatchConsumer.process();
+
+      await consume(testMessage);
+      clock.tick(60000);
+
+      await rabbitMqBatchConsumer.stopConsumption();
+
+      expect(cancelStub).to.have.been.calledTwice;
+      expect(onMessageStub).to.have.been.calledTwice;
+      expect(firstConsumer).to.not.eq(consume);
+    });
+  });
+
   const stubRabbitMq = function() {
     sandbox.stub(RabbitMQ.prototype, 'getChannel').returns({
       ack: ackStub,
       nack: nackStub,
       prefetch: prefetchStub,
-      consume: async (channelName, consumeFn) => { consume = consumeFn; return Promise.resolve(); }
+      cancel: cancelStub,
+      consume: async (channelName, consumeFn) => { consume = consumeFn; return { consumerTag: 'testTag' }; }
     });
   };
 
   const createConsumer = function(options = {}) {
-    const configuration = Object.assign({
+    const configuration = getTestConfiguration(options);
+    const rabbitMqBatchConsumer = RabbitMQBatchConsumer.create(amqpConfig, configuration);
+    return rabbitMqBatchConsumer.process();
+  };
+
+  const getTestConfiguration = function(options = {}) {
+    return Object.assign({
       logger: loggerName,
       channel: channelName,
       onMessages: async function() {}
     }, options);
-    const rabbitMqBatchConsumer = RabbitMQBatchConsumer.create(amqpConfig, configuration);
-    return rabbitMqBatchConsumer.process();
   };
 
   const createMessage = function(options = {}) {
