@@ -94,6 +94,10 @@ class RabbitMqBatchConsumer {
     return true;
   }
 
+  isFinished() {
+    return this._inProgress === 0;
+  }
+
   _consumerSuccess(groupBy, messageObjects) {
     this._logger.log('BatchConsumer success', {
       group_by: groupBy,

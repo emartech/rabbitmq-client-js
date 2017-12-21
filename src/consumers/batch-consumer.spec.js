@@ -97,19 +97,24 @@ describe('RabbitMQ Batch Consumer', function() {
 
     let onMessagesArguments = null;
     stubRabbitMq();
-    await createConsumer({
-      onMessages: function() { onMessagesArguments = arguments; return Promise.resolve(); }
+    const consumer = await createConsumer({
+      onMessages: async function() { onMessagesArguments = arguments; }
     });
+
+    expect(consumer.isFinished()).to.eql(true);
 
     await consume(message1);
     await consume(message2);
 
     expect(onMessagesArguments).to.be.null;
+    expect(consumer.isFinished()).to.eql(false);
 
     clock.tick(60000);
 
     expect(onMessagesArguments[0]).to.be.eql('testGroup');
     expect(onMessagesArguments[1]).to.be.eql([{ foo: 'bar' }, { abc: '123' }]);
+    await waitForNextTick();
+    expect(consumer.isFinished()).to.eql(true);
   });
 
   it('should not retry when message is not parsable as JSON', async function() {
@@ -178,8 +183,8 @@ describe('RabbitMQ Batch Consumer', function() {
 
     it('should return false if there is nothing to stop', async function() {
       stubRabbitMq();
-      const configuration = getTestConfiguration();
-      const rabbitMqBatchConsumer = RabbitMQBatchConsumer.create(amqpConfig, configuration);
+      const rabbitMqBatchConsumer = await createConsumer();
+      await rabbitMqBatchConsumer.stopConsumption();
       const result = await rabbitMqBatchConsumer.stopConsumption();
       expect(result).to.eql(false);
     });
@@ -189,11 +194,9 @@ describe('RabbitMQ Batch Consumer', function() {
       const onMessageStub = this.sandbox.stub().returns(Promise.resolve());
       const testMessage = createMessage({ content: '{"foo":"bar"}' });
 
-      const configuration = getTestConfiguration({
+      const rabbitMqBatchConsumer = await createConsumer({
         onMessages: onMessageStub
       });
-      const rabbitMqBatchConsumer = RabbitMQBatchConsumer.create(amqpConfig, configuration);
-      await rabbitMqBatchConsumer.process();
 
       const firstConsumer = consume;
       await consume(testMessage);
@@ -223,10 +226,11 @@ describe('RabbitMQ Batch Consumer', function() {
     });
   };
 
-  const createConsumer = function(options = {}) {
+  const createConsumer = async function(options = {}) {
     const configuration = getTestConfiguration(options);
     const rabbitMqBatchConsumer = RabbitMQBatchConsumer.create(amqpConfig, configuration);
-    return rabbitMqBatchConsumer.process();
+    await rabbitMqBatchConsumer.process();
+    return rabbitMqBatchConsumer;
   };
 
   const getTestConfiguration = function(options = {}) {
@@ -242,5 +246,9 @@ describe('RabbitMQ Batch Consumer', function() {
     const properties = options.properties || { headers: { groupBy: 'testGroup' } };
     return { content, properties };
   };
+
+  const waitForNextTick = function() {
+    return new Promise(resolve => process.nextTick(resolve));
+  }
 });
 
