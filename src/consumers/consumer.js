@@ -8,11 +8,13 @@ class RabbitMqConsumer {
   constructor(amqpConfig, configuration) {
     this._logger = configuration.logger;
     this._channel = configuration.channel;
+    this._connectionType = configuration.connectionType || 'default';
     this._onMessage = configuration.onMessage;
     this._retryTime = configuration.retryTime || 60000;
     this._prefetchCount = configuration.prefetchCount || parseInt(process.env.PREFETCH_COUNT, 10) || 1;
     this._loggerRules = configuration.loggerRules || {};
     this._autoNackTime = configuration.autoNackTime || false;
+    this._queueOptions = configuration.queueOptions || {};
     this._amqpConfig = amqpConfig;
   }
 
@@ -21,7 +23,7 @@ class RabbitMqConsumer {
     logger.log('[AMQP] Process');
 
     try {
-      const rabbitMq = await RabbitMq.create(this._amqpConfig, this._channel);
+      const rabbitMq = await RabbitMq.create(this._amqpConfig, this._channel, this._connectionType, this._queueOptions);
       const channel = rabbitMq.getChannel();
       await channel.prefetch(this._prefetchCount);
 
