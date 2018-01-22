@@ -14,6 +14,7 @@ class RabbitMqBatchConsumer {
     this._onMessages = configuration.onMessages;
     this._retryTime = configuration.retryTime || 60000;
     this._amqpConfig = amqpConfig;
+    this._queueOptions = configuration.queueOptions || {};
     this._prefetchCount = configuration.prefetchCount || parseInt(process.env.PREFETCH_COUNT, 10) || 1024;
     this._objectBatcher = new ObjectBatcher(this._handleCollectedMessages.bind(this), {
       batchSize: this._batchSize,
@@ -59,7 +60,7 @@ class RabbitMqBatchConsumer {
 
   async _setupRabbitMqChannel() {
     if (!this._rabbitMqChannel) {
-      this._rabbitMq = await RabbitMq.create(this._amqpConfig, this._channel, this._connectionType);
+      this._rabbitMq = await RabbitMq.create(this._amqpConfig, this._channel, this._connectionType, this._queueOptions);
       this._rabbitMqChannel = this._rabbitMq.getChannel();
       await this._rabbitMqChannel.prefetch(this._prefetchCount);
     }
