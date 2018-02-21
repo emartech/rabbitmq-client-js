@@ -2,6 +2,7 @@
 
 require('dotenv').config({ silent: true });
 
+const _ = require('lodash');
 const url = require('url');
 const amqp = require('amqplib');
 const logger = require('logentries-logformat')('rabbit-mq-client');
@@ -50,8 +51,8 @@ class RabbitMq {
       });
 
       this._channel.on('close', () => {
-        delete channels[this._connectionType];
-        delete assertedQueues[this.queueName];
+        _.unset(channels, [this._connectionType]);
+        _.unset(assertedQueues, [[this._connectionType], [this.queueName]]);
         logger.error('Channel close');
       });
     }
@@ -62,10 +63,11 @@ class RabbitMq {
   async _assertQueue(assertedQueues, queueOptions) {
     const defaultQueueOptions = { durable: false };
     const options = Object.assign({}, defaultQueueOptions, queueOptions);
-    if (!assertedQueues[this.queueName]) {
-      assertedQueues[this.queueName] = this._channel.assertQueue(this.queueName, options);
+    if (!_.get(assertedQueues, [[this._connectionType], [this.queueName]])) {
+      _.set(assertedQueues, [[this._connectionType], [this.queueName]],
+        this._channel.assertQueue(this.queueName, options));
     }
-    await assertedQueues[this.queueName];
+    await assertedQueues[this._connectionType][this.queueName];
   }
 
   async closeConnection() {
