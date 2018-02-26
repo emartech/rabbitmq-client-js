@@ -2,11 +2,11 @@
 
 const _ = require('lodash');
 const RabbitMq = require('../rabbit-mq/index');
+const { getLogger } = require('../util');
 
 class RabbitMqConsumer {
-
   constructor(amqpConfig, configuration) {
-    this._logger = configuration.logger;
+    this._logger = getLogger(configuration.logger);
     this._channel = configuration.channel;
     this._connectionType = configuration.connectionType || 'default';
     this._onMessage = configuration.onMessage;
@@ -19,8 +19,8 @@ class RabbitMqConsumer {
   }
 
   async process() {
-    const logger = require('logentries-logformat')(this._logger);
-    logger.log('[AMQP] Process');
+    const logger = this._logger;
+    logger.info('[AMQP] Process');
 
     try {
       const rabbitMq = await RabbitMq.create(this._amqpConfig, this._channel, this._connectionType, this._queueOptions);
@@ -28,21 +28,21 @@ class RabbitMqConsumer {
       await channel.prefetch(this._prefetchCount);
 
       channel.on('error', function(err) {
-        logger.log('[AMQP] Channel error', { message: err.message });
+        logger.fromError('[AMQP] Channel error', err.message);
         throw new Error('[AMQP] Channel error');
       });
 
       channel.on('close', function() {
-        logger.log('[AMQP] Channel close');
+        logger.info('[AMQP] Channel close');
         process.exit(1);
       });
 
-      await channel.consume(this._channel, async (message) => {
+      await channel.consume(this._channel, async message => {
         let autoNackTime;
         message._status = 'autonack init';
         if (typeof this._autoNackTime === 'number') {
           autoNackTime = setTimeout(() => {
-            logger.error('Consumer auto nack', message._status, message.content.toString());
+            logger.error('Consumer auto nack', { status: message._status, content: message.content.toString() });
             channel.nack(message);
           }, this._autoNackTime);
         }
@@ -61,7 +61,7 @@ class RabbitMqConsumer {
           if (autoNackTime) clearTimeout(autoNackTime);
 
           if (error.retryable) {
-            logger.error('Consumer error retry', error.message, content);
+            logger.fromError('Consumer error retry', error, { content });
             return setTimeout(() => {
               channel.nack(message);
             }, this._retryTime);
@@ -69,21 +69,22 @@ class RabbitMqConsumer {
 
           channel.nack(message, false, false);
           if (this._loggerRules[error.message]) {
-            logger.error('Consumer error finish', error.message, _.pick(content, this._loggerRules[error.message]));
+            logger.fromError('Consumer error finish', error, {
+              content: _.pick(content, this._loggerRules[error.message])
+            });
           } else {
-            logger.error('Consumer error finish', error.message, content);
+            logger.fromError('Consumer error finish', error, { content });
           }
         }
       });
     } catch (error) {
-      logger.error('Consumer initialization error', error.message, JSON.stringify({ error: error }));
+      logger.fromError('Consumer initialization error', error);
     }
-  };
+  }
 
   static create(amqpConfig, configuration) {
     return new RabbitMqConsumer(amqpConfig, configuration);
   }
-
 }
 
 module.exports = RabbitMqConsumer;
