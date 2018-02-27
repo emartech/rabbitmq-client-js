@@ -110,7 +110,6 @@ class RabbitMqBatchConsumer {
 
   _consumerError(error, groupBy, messageObjects) {
     this._logger.fromError('BatchConsumer error finish', error, {
-      error_data: error.data,
       group_by: groupBy,
       count: messageObjects.length
     });
