@@ -5,12 +5,7 @@ require('dotenv').config({ silent: true });
 const _ = require('lodash');
 const url = require('url');
 const amqp = require('amqplib');
-const Logger = require('@emartech/json-logger');
-Logger.configure({
-  formatter: Logger.formatter.logentries
-});
-
-const logger = Logger('rabbit-mq-client');
+const logger = require('@emartech/json-logger')('rabbit-mq-client');
 
 class RabbitMq {
   constructor(amqpConfig, queueName, connectionType = 'default') {

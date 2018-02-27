@@ -28,7 +28,7 @@ class RabbitMqConsumer {
       await channel.prefetch(this._prefetchCount);
 
       channel.on('error', function(err) {
-        logger.fromError('[AMQP] Channel error', err.message);
+        logger.fromError('[AMQP] Channel error', err);
         throw new Error('[AMQP] Channel error');
       });
 
