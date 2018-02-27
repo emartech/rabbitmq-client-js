@@ -30,9 +30,21 @@ describe('#getLogger', function() {
   });
 
   it('should create logger instance if string passed', function() {
+    process.env.DEBUG = 'test';
     const logger = getLogger('test');
+
+    const fakeLog = sandbox.stub();
+    sandbox.clock = sinon.useFakeTimers();
+    LoggerFactory.configure({ output: fakeLog });
+
     logger.info('test', { message: 'fake' });
+
     expect(Logger.prototype.info).to.have.been.calledOnce;
     expect(Logger.prototype.info).to.have.been.calledWith('test', { message: 'fake' });
+    expect(fakeLog).to.be.calledWith(
+      '{"event":"test","name":"test","action":"test","level":30,"time":"1970-01-01T00:00:00.000Z","message":"fake"}'
+    );
+
+    delete process.env.DEBUG;
   });
 });
