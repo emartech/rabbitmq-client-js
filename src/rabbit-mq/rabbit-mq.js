@@ -5,7 +5,7 @@ require('dotenv').config({ silent: true });
 const _ = require('lodash');
 const url = require('url');
 const amqp = require('amqplib');
-const logger = require('logentries-logformat')('rabbit-mq-client');
+const logger = require('@emartech/json-logger')('rabbit-mq-client');
 
 class RabbitMq {
   constructor(amqpConfig, queueName, connectionType = 'default') {
@@ -44,16 +44,15 @@ class RabbitMq {
 
     this._channel = await channels[this._connectionType];
 
-
     if (registerCloseListener) {
       this._channel.on('error', error => {
-        logger.error('Channel error', error.message, JSON.stringify(error));
+        logger.fromError('Channel error', error);
       });
 
       this._channel.on('close', () => {
         _.unset(channels, [this._connectionType]);
         _.unset(assertedQueues, [[this._connectionType], [this.queueName]]);
-        logger.error('Channel close');
+        logger.warn('Channel close');
       });
     }
 
@@ -64,8 +63,11 @@ class RabbitMq {
     const defaultQueueOptions = { durable: false };
     const options = Object.assign({}, defaultQueueOptions, queueOptions);
     if (!_.get(assertedQueues, [[this._connectionType], [this.queueName]])) {
-      _.set(assertedQueues, [[this._connectionType], [this.queueName]],
-        this._channel.assertQueue(this.queueName, options));
+      _.set(
+        assertedQueues,
+        [[this._connectionType], [this.queueName]],
+        this._channel.assertQueue(this.queueName, options)
+      );
     }
     await assertedQueues[this._connectionType][this.queueName];
   }
@@ -79,11 +81,7 @@ class RabbitMq {
   }
 
   insert(data, options = {}) {
-    return this._channel.sendToQueue(
-      this.queueName,
-      new Buffer(JSON.stringify(data)),
-      options
-    );
+    return this._channel.sendToQueue(this.queueName, new Buffer(JSON.stringify(data)), options);
   }
 
   insertWithGroupBy(groupBy, data, options = {}) {
