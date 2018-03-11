@@ -98,6 +98,14 @@ class RabbitMq {
     return this.insert(data, insertOptions);
   }
 
+  async waitForConfirms() {
+    if (this._config.useConfirmChannel) {
+      return await this._channel.waitForConfirms();
+    }
+
+    throw new Error('Waiting for confirmation is only supported with confirmation channels');
+  }
+
   async purge() {
     await this._channel.purgeQueue(this.queueName);
   }

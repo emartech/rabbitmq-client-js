@@ -41,7 +41,8 @@ describe('RabbitMQ', () => {
       sendToQueue: sandbox.stub().returns(true),
       deleteQueue: sandbox.stub().resolves(true),
       purgeQueue: sandbox.stub().resolves(true),
-      assertQueue: sandbox.stub().resolves(true)
+      assertQueue: sandbox.stub().resolves(true),
+      waitForConfirms: sandbox.stub().resolves(true)
     });
 
     connectionMock = {
@@ -255,6 +256,23 @@ describe('RabbitMQ', () => {
 
     await rabbitMq.destroy();
     expect(channelMock.deleteQueue).to.have.been.calledWith(queueName);
+  });
+
+  it('#waitForConfirms should wait for message acks by calling waitForConfirms on the channel', async function() {
+    const rabbitMq = new RabbitMq(config, 'some-queue', 'confirmChannel');
+
+    await rabbitMq.connect();
+    await rabbitMq.createChannel();
+    await rabbitMq.waitForConfirms();
+
+    expect(channelMock.waitForConfirms).to.have.been.called;
+  });
+
+  it('#waitForConfirms should throw an exception when we are not using confirmChannel', async function() {
+    await rabbitMq.connect();
+    await rabbitMq.createChannel();
+    await expect(rabbitMq.waitForConfirms())
+      .to.be.rejectedWith('Waiting for confirmation is only supported with confirmation channels');
   });
 
   describe('with dead channel', () => {
