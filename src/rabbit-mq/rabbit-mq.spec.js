@@ -20,6 +20,10 @@ const config = {
   },
   lobab: {
     url: 'amqp://test:secret@192.168.40.254:5672/fakeLobab'
+  },
+  confirmChannel: {
+    url: 'amqp://test:secret@192.168.40.254:5672/confirmChannel',
+    useConfirmChannel: true
   }
 };
 const queueName = 'test-queue';
@@ -42,6 +46,7 @@ describe('RabbitMQ', () => {
 
     connectionMock = {
       createChannel: sandbox.stub().resolves(channelMock),
+      createConfirmChannel: sandbox.stub().resolves(channelMock),
       close: sandbox.stub().returns(true)
     };
 
@@ -168,6 +173,17 @@ describe('RabbitMQ', () => {
     rabbitMq = new RabbitMq(config);
     await rabbitMq.connect();
     await expect(rabbitMq.createChannel()).to.be.rejectedWith('No RabbitMQ queue');
+  });
+
+  it('#createChannel should support creating confirm channel', async () => {
+    const rabbitMq = new RabbitMq(config, 'some-queue', 'confirmChannel');
+
+    const channels = {};
+    const assertedQueues = {};
+    await rabbitMq.connect();
+    await rabbitMq.createChannel(channels, assertedQueues);
+
+    expect(connectionMock.createConfirmChannel).to.have.been.called;
   });
 
   it('#insert should call sentToQueue', async () => {

@@ -38,7 +38,7 @@ class RabbitMq {
     let registerCloseListener = false;
 
     if (!channels[this._connectionType]) {
-      channels[this._connectionType] = this._connection.createChannel();
+      channels[this._connectionType] = this._createChannel();
       registerCloseListener = true;
     }
 
@@ -57,6 +57,14 @@ class RabbitMq {
     }
 
     await this._assertQueue(assertedQueues, queueOptions);
+  }
+
+  _createChannel() {
+    if (this._config.useConfirmChannel) {
+      return this._connection.createConfirmChannel();
+    }
+
+    return this._connection.createChannel();
   }
 
   async _assertQueue(assertedQueues, queueOptions) {
