@@ -4,16 +4,11 @@
   "main": "index.js",
   "scripts": {
     "test": "mocha --reporter spec 'src/**/*.spec.js'",
-    "semantic-release": "CI=true semantic-release pre && npm publish --access public && semantic-release post"
+    "semantic-release": "semantic-release"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/emartech/rabbitmq-client-js.git"
-  },
-  "release": {
-    "verifyConditions": {
-      "path": "./node_modules/semantic-release/src/lib/plugin-noop.js"
-    }
   },
   "author": "",
   "license": "ISC",
@@ -26,19 +21,19 @@
     "chai-as-promised": "7.1.1",
     "chai-string": "1.4.0",
     "chai-subset": "1.6.0",
-    "eslint": "4.1.1",
+    "eslint": "4.19.1",
     "eslint-config-emarsys": "4.0.0",
-    "eslint-plugin-mocha": "4.11.0",
-    "mocha": "5.0.1",
-    "semantic-release": "6.3.6",
-    "sinon": "4.4.2",
-    "sinon-chai": "2.14.0"
+    "eslint-plugin-mocha": "5.0.0",
+    "mocha": "5.1.1",
+    "semantic-release": "15.3.1",
+    "sinon": "5.0.7",
+    "sinon-chai": "3.0.0"
   },
   "dependencies": {
     "@emartech/json-logger": "^3.0.1",
     "@emartech/object-batcher-js": "^1.2.0",
     "amqplib": "^0.5.2",
-    "dotenv": "^4.0.0",
-    "lodash": "^4.17.4"
+    "dotenv": "^5.0.1",
+    "lodash": "^4.17.10"
   }
 }
