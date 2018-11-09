@@ -12,7 +12,7 @@ chai.use(sinonChai);
 const expect = chai.expect;
 
 describe('#getLogger', function() {
-  const sandbox = sinon.sandbox.create();
+  const sandbox = sinon.createSandbox();
 
   beforeEach(() => {
     sandbox.spy(Logger.prototype, 'info');

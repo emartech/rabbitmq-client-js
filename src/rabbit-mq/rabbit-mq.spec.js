@@ -31,7 +31,7 @@ const connectionType = 'default';
 
 describe('RabbitMQ', () => {
   let rabbitMq;
-  let sandbox = sinon.sandbox.create();
+  let sandbox = sinon.createSandbox();
 
   let connectionMock;
   let channelMock;
@@ -192,7 +192,7 @@ describe('RabbitMQ', () => {
     await rabbitMq.connect();
     await rabbitMq.createChannel();
     rabbitMq.insert(data);
-    expect(channelMock.sendToQueue).to.have.been.calledWith(queueName, new Buffer(JSON.stringify(data)));
+    expect(channelMock.sendToQueue).to.have.been.calledWith(queueName, Buffer.from(JSON.stringify(data)));
   });
 
   it('#insert should support options parameter', async () => {
@@ -201,7 +201,7 @@ describe('RabbitMQ', () => {
     await rabbitMq.connect();
     await rabbitMq.createChannel();
     rabbitMq.insert(data, options);
-    expect(channelMock.sendToQueue).to.have.been.calledWith(queueName, new Buffer(JSON.stringify(data)), options);
+    expect(channelMock.sendToQueue).to.have.been.calledWith(queueName, Buffer.from(JSON.stringify(data)), options);
   });
 
   it('#insertWithGroupBy should call sentToQueue', async () => {
@@ -213,7 +213,7 @@ describe('RabbitMQ', () => {
     rabbitMq.insertWithGroupBy(groupBy, data);
     expect(channelMock.sendToQueue).to.have.been.calledWith(
       queueName,
-      new Buffer(JSON.stringify(data)),
+      Buffer.from(JSON.stringify(data)),
       { headers: { groupBy } }
     );
   });
@@ -228,7 +228,7 @@ describe('RabbitMQ', () => {
     rabbitMq.insertWithGroupBy(groupBy, data, options);
     expect(channelMock.sendToQueue).to.have.been.calledWith(
       queueName,
-      new Buffer(JSON.stringify(data)),
+      Buffer.from(JSON.stringify(data)),
       Object.assign({ headers: { groupBy } }, options)
     );
   });

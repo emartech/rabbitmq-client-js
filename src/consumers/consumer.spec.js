@@ -24,7 +24,7 @@ const amqpConfig = {
 };
 
 describe('RabbitMQ Consumer', function() {
-  let sandbox = sinon.sandbox.create();
+  let sandbox = sinon.createSandbox();
   let clock;
   let startProcess;
   let ackStub;
@@ -85,7 +85,7 @@ describe('RabbitMQ Consumer', function() {
   });
 
   it('should not retry when message is not parsable as JSON', async function() {
-    const message = { content: new Buffer('Not a JSON') };
+    const message = { content: Buffer.from('Not a JSON') };
     const configuration = {
       logger: loggerName,
       channel: channelName,
@@ -100,7 +100,7 @@ describe('RabbitMQ Consumer', function() {
   });
 
   it('should not retry when onMessage throws non-retryable error', async function() {
-    const message = { content: new Buffer('{}') };
+    const message = { content: Buffer.from('{}') };
     const configuration = {
       logger: loggerName,
       channel: channelName,
@@ -115,7 +115,7 @@ describe('RabbitMQ Consumer', function() {
   });
 
   it('should retry when onMessage throws retryable error', async function() {
-    const message = { content: new Buffer('{}') };
+    const message = { content: Buffer.from('{}') };
     const configuration = {
       logger: loggerName,
       channel: channelName,
@@ -132,7 +132,7 @@ describe('RabbitMQ Consumer', function() {
   });
 
   it('should autonack if message processing takes too much time', async function() {
-    const message = { content: new Buffer('{}') };
+    const message = { content: Buffer.from('{}') };
     const configuration = {
       logger: loggerName,
       channel: channelName,

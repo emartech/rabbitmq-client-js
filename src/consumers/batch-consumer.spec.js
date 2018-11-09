@@ -25,7 +25,7 @@ const amqpConfig = {
 };
 
 describe('RabbitMQ Batch Consumer', function() {
-  let sandbox = sinon.sandbox.create();
+  let sandbox = sinon.createSandbox();
   let consume;
   let clock;
   let ackStub;
@@ -167,7 +167,7 @@ describe('RabbitMQ Batch Consumer', function() {
   };
 
   const createMessage = function(options = {}) {
-    const content = new Buffer(options.content || {});
+    const content = Buffer.from(options.content || {});
     const properties = options.properties || { headers: { groupBy: 'testGroup' } };
     return { content, properties };
   };

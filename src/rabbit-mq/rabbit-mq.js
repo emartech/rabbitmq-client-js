@@ -89,7 +89,7 @@ class RabbitMq {
   }
 
   insert(data, options = {}) {
-    return this._channel.sendToQueue(this.queueName, new Buffer(JSON.stringify(data)), options);
+    return this._channel.sendToQueue(this.queueName, Buffer.from(JSON.stringify(data)), options);
   }
 
   insertWithGroupBy(groupBy, data, options = {}) {
