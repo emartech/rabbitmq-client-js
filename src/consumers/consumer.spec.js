@@ -3,6 +3,7 @@
 const chai = require('chai');
 const sinon = require('sinon');
 const sinonChai = require('sinon-chai');
+const Logger = require('@emartech/json-logger').Logger;
 
 chai.use(sinonChai);
 
@@ -115,7 +116,9 @@ describe('RabbitMQ Consumer', function() {
   });
 
   it('should retry when onMessage throws retryable error', async function() {
-    const message = { content: Buffer.from('{}') };
+    const logFromErrorSpy = sandbox.spy(Logger.prototype, 'fromError');
+
+    const message = { content: Buffer.from('{ "a": "b" }') };
     const configuration = {
       logger: loggerName,
       channel: channelName,
@@ -126,6 +129,30 @@ describe('RabbitMQ Consumer', function() {
     await rabbitMQConsumer.process();
     expect(typeof startProcess).to.be.eql('function');
     await startProcess(message);
+    expect(logFromErrorSpy).to.have.been.calledWith('Consumer error retry', sinon.match.any, {});
+
+    expect(nackStub).not.have.been.called;
+    clock.tick(60000);
+    expect(nackStub).have.been.calledWith(message);
+  });
+
+  it('should log retriable error content if configured', async function() {
+    const logFromErrorSpy = sandbox.spy(Logger.prototype, 'fromError');
+
+    const message = { content: Buffer.from('{ "a": "b" }') };
+    const configuration = {
+      logger: loggerName,
+      channel: channelName,
+      onMessage: async function() { throw new RetryableError('test error'); },
+      logRetriableErrorContent: true
+    };
+
+    const rabbitMQConsumer = RabbitMQConsumer.create(amqpConfig, configuration);
+    await rabbitMQConsumer.process();
+    expect(typeof startProcess).to.be.eql('function');
+    await startProcess(message);
+    expect(logFromErrorSpy).to.have.been.calledWith('Consumer error retry', sinon.match.any, { content: { a: 'b' } });
+
     expect(nackStub).not.have.been.called;
     clock.tick(60000);
     expect(nackStub).have.been.calledWith(message);

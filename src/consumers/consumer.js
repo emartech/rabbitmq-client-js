@@ -16,6 +16,7 @@ class RabbitMqConsumer {
     this._autoNackTime = configuration.autoNackTime || false;
     this._queueOptions = configuration.queueOptions || {};
     this._amqpConfig = amqpConfig;
+    this._logRetriableErrorContent = configuration.logRetriableErrorContent || false;
   }
 
   async process() {
@@ -61,7 +62,7 @@ class RabbitMqConsumer {
           if (autoNackTime) clearTimeout(autoNackTime);
 
           if (error.retryable) {
-            logger.fromError('Consumer error retry', error, { content });
+            logger.fromError('Consumer error retry', error, this._logRetriableErrorContent ? { content } : {});
             return setTimeout(() => {
               channel.nack(message);
             }, this._retryTime);
