@@ -73,6 +73,17 @@ describe('RabbitMQ Batch Consumer', function() {
     expect(rabbitMqSpy).have.been.calledWith(amqpConfig, channelName, 'special');
   });
 
+  it('should call onChannelEstablished with channel', async function() {
+    stubRabbitMq();
+    const options = {
+      onChannelEstablished: sandbox.spy()
+    };
+    await createConsumer(options);
+
+    expect(options.onChannelEstablished).have.been.calledOnce;
+  });
+
+
   it('should call onMessages with batched messages', async function() {
     const message1 = createMessage({ content: '{"foo":"bar"}' });
     const message2 = createMessage({ content: '{"abc":"123"}' });

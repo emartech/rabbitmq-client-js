@@ -9,6 +9,7 @@ class RabbitMqConsumer {
     this._logger = getLogger(configuration.logger);
     this._channel = configuration.channel;
     this._connectionType = configuration.connectionType || 'default';
+    this._onChannelEstablished = configuration.onChannelEstablished || (async () => Promise.resolve());
     this._onMessage = configuration.onMessage;
     this._retryTime = configuration.retryTime || 60000;
     this._prefetchCount = configuration.prefetchCount || parseInt(process.env.PREFETCH_COUNT, 10) || 1;
@@ -27,6 +28,7 @@ class RabbitMqConsumer {
       const rabbitMq = await RabbitMq.create(this._amqpConfig, this._channel, this._connectionType, this._queueOptions);
       const channel = rabbitMq.getChannel();
       await channel.prefetch(this._prefetchCount);
+      await this._onChannelEstablished(channel);
 
       channel.on('error', function(err) {
         logger.fromError('[AMQP] Channel error', err);
