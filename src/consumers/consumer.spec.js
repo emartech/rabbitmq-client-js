@@ -85,6 +85,19 @@ describe('RabbitMQ Consumer', function() {
     expect(rabbitMqStub).have.been.calledWith(amqpConfig, channelName);
   });
 
+  it('should call onChannelEstablished with channel', async function() {
+    const options = {
+      logger: loggerName,
+      channel: channelName,
+      onChannelEstablished: sandbox.spy()
+    };
+
+    const rabbitMQConsumer = RabbitMQConsumer.create(amqpConfig, options);
+    await rabbitMQConsumer.process();
+
+    expect(options.onChannelEstablished).have.been.calledOnce;
+  });
+
   it('should not retry when message is not parsable as JSON', async function() {
     const message = { content: Buffer.from('Not a JSON') };
     const configuration = {
