@@ -9,6 +9,7 @@ class RabbitMqBatchConsumer {
     this._logger = getLogger(configuration.logger);
     this._channel = configuration.channel;
     this._connectionType = configuration.connectionType || 'default';
+    this._onChannelEstablished = configuration.onChannelEstablished || (async () => Promise.resolve());
     this._batchTimeout = configuration.batchTimeout || 1000;
     this._batchSize = configuration.batchSize || 1024;
     this._onMessages = configuration.onMessages;
@@ -31,6 +32,7 @@ class RabbitMqBatchConsumer {
   async process() {
     try {
       await this._setupRabbitMqChannel();
+      await this._onChannelEstablished(this._rabbitMqChannel);
       this._consumer = await this._rabbitMqChannel.consume(this._channel, message => {
         this._inProgress++;
         const groupBy = message.properties.headers.groupBy;
