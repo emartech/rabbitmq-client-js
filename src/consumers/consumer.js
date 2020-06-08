@@ -42,25 +42,21 @@ class RabbitMqConsumer {
 
       await channel.consume(this._channel, async message => {
         let autoNackTime;
-        message._status = 'autonack init';
         if (typeof this._autoNackTime === 'number') {
           autoNackTime = setTimeout(() => {
-            logger.error('Consumer auto nack', { status: message._status, content: message.content.toString() });
+            logger.error('Consumer auto nack', { content: message.content.toString() });
             channel.nack(message);
           }, this._autoNackTime);
         }
 
         let content = {};
-        message._status = 'try';
+
         try {
           content = JSON.parse(message.content.toString());
-          message._status = 'JSON parsed';
           await this._onMessage(content, message);
-          message._status = 'after onMessage';
           if (autoNackTime) clearTimeout(autoNackTime);
           await channel.ack(message);
         } catch (error) {
-          message._status = 'error';
           if (autoNackTime) clearTimeout(autoNackTime);
 
           if (error.retryable) {
