@@ -24,45 +24,53 @@ const amqpConfig = {
   }
 };
 
-describe('RabbitMQ Consumer', function() {
+describe('RabbitMQ Consumer', function () {
   let sandbox = sinon.createSandbox();
   let clock;
   let startProcess;
   let ackStub;
   let nackStub;
   let prefetchStub;
+  let cancelStub;
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     clock = sandbox.useFakeTimers();
     startProcess = null;
     ackStub = sandbox.stub();
     nackStub = sandbox.stub();
     prefetchStub = sandbox.stub();
+    cancelStub = sandbox.stub();
 
     const connectionMock = {
-      createChannel: () => Promise.resolve({
-        assertQueue: () => {}
-      })
+      createChannel: () =>
+        Promise.resolve({
+          assertQueue: () => {},
+          on: () => {}
+        })
     };
     sandbox.stub(amqp, 'connect').resolves(connectionMock);
     sandbox.stub(RabbitMQ.prototype, 'getChannel').returns({
       ack: ackStub,
       nack: nackStub,
       prefetch: prefetchStub,
+      cancel: cancelStub,
       on: () => {},
-      consume: async (channelName, consumeFn) => { startProcess = consumeFn; return Promise.resolve(); }
+      consume: async (channelName, consumeFn) => {
+        startProcess = consumeFn;
+        return Promise.resolve({ consumerTag: 'test-tag' });
+      }
     });
   });
 
-  afterEach(function() {
+  afterEach(function () {
     sandbox.restore();
   });
 
-  it('should create RabbitMqConsumer', async function() {
+  it('should create RabbitMqConsumer', async function () {
     const configuration = {
       logger: loggerName,
       channel: channelName,
-      onMessage: async function() {}
+      onMessage: async function () {}
     };
 
     const rabbitMQConsumer = RabbitMQConsumer.create(amqpConfig, configuration);
@@ -70,11 +78,11 @@ describe('RabbitMQ Consumer', function() {
     expect(rabbitMQConsumer).is.instanceOf(RabbitMQConsumer);
   });
 
-  it('should create a RabbitMQ connection', async function() {
+  it('should create a RabbitMQ connection', async function () {
     const configuration = {
       logger: loggerName,
       channel: channelName,
-      onMessage: async function() {}
+      onMessage: async function () {}
     };
 
     const rabbitMqStub = sandbox.stub(RabbitMQSingleton, 'create');
@@ -85,7 +93,7 @@ describe('RabbitMQ Consumer', function() {
     expect(rabbitMqStub).have.been.calledWith(amqpConfig, channelName);
   });
 
-  it('should call onChannelEstablished with channel', async function() {
+  it('should call onChannelEstablished with channel', async function () {
     const options = {
       logger: loggerName,
       channel: channelName,
@@ -98,12 +106,12 @@ describe('RabbitMQ Consumer', function() {
     expect(options.onChannelEstablished).have.been.calledOnce;
   });
 
-  it('should not retry when message is not parsable as JSON', async function() {
+  it('should not retry when message is not parsable as JSON', async function () {
     const message = { content: Buffer.from('Not a JSON') };
     const configuration = {
       logger: loggerName,
       channel: channelName,
-      onMessage: async function() {}
+      onMessage: async function () {}
     };
 
     const rabbitMQConsumer = RabbitMQConsumer.create(amqpConfig, configuration);
@@ -113,12 +121,14 @@ describe('RabbitMQ Consumer', function() {
     expect(nackStub).have.been.calledWith(message, false, false);
   });
 
-  it('should not retry when onMessage throws non-retryable error', async function() {
+  it('should not retry when onMessage throws non-retryable error', async function () {
     const message = { content: Buffer.from('{}') };
     const configuration = {
       logger: loggerName,
       channel: channelName,
-      onMessage: async function() { throw Error('test error'); }
+      onMessage: async function () {
+        throw Error('test error');
+      }
     };
 
     const rabbitMQConsumer = RabbitMQConsumer.create(amqpConfig, configuration);
@@ -128,14 +138,16 @@ describe('RabbitMQ Consumer', function() {
     expect(nackStub).have.been.calledWith(message, false, false);
   });
 
-  it('should retry when onMessage throws retryable error', async function() {
+  it('should retry when onMessage throws retryable error', async function () {
     const logFromErrorSpy = sandbox.spy(Logger.prototype, 'fromError');
 
     const message = { content: Buffer.from('{ "a": "b" }') };
     const configuration = {
       logger: loggerName,
       channel: channelName,
-      onMessage: async function() { throw new RetryableError('test error'); }
+      onMessage: async function () {
+        throw new RetryableError('test error');
+      }
     };
 
     const rabbitMQConsumer = RabbitMQConsumer.create(amqpConfig, configuration);
@@ -149,14 +161,16 @@ describe('RabbitMQ Consumer', function() {
     expect(nackStub).have.been.calledWith(message);
   });
 
-  it('should log retriable error content if configured', async function() {
+  it('should log retriable error content if configured', async function () {
     const logFromErrorSpy = sandbox.spy(Logger.prototype, 'fromError');
 
     const message = { content: Buffer.from('{ "a": "b" }') };
     const configuration = {
       logger: loggerName,
       channel: channelName,
-      onMessage: async function() { throw new RetryableError('test error'); },
+      onMessage: async function () {
+        throw new RetryableError('test error');
+      },
       logRetriableErrorContent: true
     };
 
@@ -171,14 +185,14 @@ describe('RabbitMQ Consumer', function() {
     expect(nackStub).have.been.calledWith(message);
   });
 
-  it('should autonack if message processing takes too much time', async function() {
+  it('should autonack if message processing takes too much time', async function () {
     const message = { content: Buffer.from('{}') };
     const configuration = {
       logger: loggerName,
       channel: channelName,
       autoNackTime: 500,
-      onMessage: async function() {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      onMessage: async function () {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     };
 
@@ -190,5 +204,4 @@ describe('RabbitMQ Consumer', function() {
     clock.tick(501);
     expect(nackStub).have.been.calledWith(message);
   });
-
 });

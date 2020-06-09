@@ -25,6 +25,7 @@
     "curly": [2, "multi-line"],
     "require-yield": 0,
     "new-cap": 0,
-    "security/detect-object-injection": 0
+    "security/detect-object-injection": 0,
+    "space-before-function-paren": 0
   }
 }

@@ -40,7 +40,7 @@ class RabbitMqConsumer {
         process.exit(1);
       });
 
-      await channel.consume(this._channel, async message => {
+      const { consumerTag } = await channel.consume(this._channel, async message => {
         let autoNackTime;
         if (typeof this._autoNackTime === 'number') {
           autoNackTime = setTimeout(() => {
@@ -75,6 +75,10 @@ class RabbitMqConsumer {
             logger.fromError('Consumer error finish', error, { content });
           }
         }
+      });
+
+      process.once('SIGTERM', () => {
+        channel.cancel(consumerTag);
       });
     } catch (error) {
       logger.fromError('Consumer initialization error', error);

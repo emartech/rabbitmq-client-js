@@ -38,6 +38,10 @@ class RabbitMqBatchConsumer {
         const groupBy = message.properties.headers.groupBy;
         this._objectBatcher.add(groupBy, message);
       });
+
+      process.once('SIGTERM', (function() {
+        this._rabbitMqChannel.cancel(this._consumer.consumerTag);
+      }).bind(this));
     } catch (error) {
       this._logger.fromError('Consumer initialization error', error);
     }

@@ -171,6 +171,7 @@ describe('RabbitMQ Batch Consumer', function() {
     const configuration = Object.assign({
       logger: loggerName,
       channel: channelName,
+      cancel: () => {},
       onMessages: async function() {}
     }, options);
     const rabbitMqBatchConsumer = RabbitMQBatchConsumer.create(amqpConfig, configuration);
