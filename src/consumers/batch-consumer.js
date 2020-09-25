@@ -19,7 +19,8 @@ class RabbitMqBatchConsumer {
     this._prefetchCount = configuration.prefetchCount || parseInt(process.env.PREFETCH_COUNT, 10) || 1024;
     this._objectBatcher = new ObjectBatcher(this._handleCollectedMessages.bind(this), {
       batchSize: this._batchSize,
-      batchTimeout: this._batchTimeout
+      batchTimeout: this._batchTimeout,
+      prefetchCount: this._prefetchCount
     });
     this._inProgress = 0;
     this._consumerCanceled = false;
