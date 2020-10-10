@@ -17,7 +17,7 @@ class RabbitMqConsumer {
     this._queueOptions = {
       ...configuration.queueOptions,
       deadLetterExchange: '',
-      deadLetterRoutingKey: `${configuration.channel}-retry`
+      deadLetterRoutingKey: `${configuration.channel}-retry-${this._retryTime}`
     };
     this._amqpConfig = amqpConfig;
   }
@@ -27,7 +27,7 @@ class RabbitMqConsumer {
     logger.info('[AMQP] Process');
 
     try {
-      await RabbitMq.create(this._amqpConfig, `${this._channel}-retry`, this._connectionType, {
+      await RabbitMq.create(this._amqpConfig, `${this._channel}-retry-${this._retryTime}`, this._connectionType, {
         messageTtl: this._retryTime,
         deadLetterExchange: '',
         deadLetterRoutingKey: this._channel

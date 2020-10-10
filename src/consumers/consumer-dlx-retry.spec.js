@@ -24,7 +24,7 @@ const amqpConfig = {
   }
 };
 
-describe.only('RabbitMQ Consumer with DLX Retry', function () {
+describe('RabbitMQ Consumer with DLX Retry', function () {
   let sandbox = sinon.createSandbox();
   let clock;
   let startProcess;
@@ -95,7 +95,7 @@ describe.only('RabbitMQ Consumer with DLX Retry', function () {
     expect(rabbitMqStub).have.been.calledWith(amqpConfig, channelName, 'default', {
       foo: 'bar',
       deadLetterExchange: '',
-      deadLetterRoutingKey: `${channelName}-retry`
+      deadLetterRoutingKey: `${channelName}-retry-60000`
     });
   });
 
@@ -112,7 +112,7 @@ describe.only('RabbitMQ Consumer with DLX Retry', function () {
     const rabbitMQConsumer = RabbitMQConsumer.create(amqpConfig, configuration);
     await rabbitMQConsumer.process();
 
-    expect(rabbitMqStub).have.been.calledWith(amqpConfig, `${channelName}-retry`, 'default', {
+    expect(rabbitMqStub).have.been.calledWith(amqpConfig, `${channelName}-retry-300`, 'default', {
       messageTtl: 300,
       deadLetterExchange: '',
       deadLetterRoutingKey: channelName
