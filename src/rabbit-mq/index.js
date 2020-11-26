@@ -13,5 +13,12 @@ module.exports = {
     await rabbitMq.createChannel(channels, assertedQueues, queueOptions);
 
     return rabbitMq;
+  },
+
+  destroy: async () => {
+    for (const connectionType in connections) {
+      const connection = await connections[connectionType];
+      await connection.close();
+    }
   }
 };
