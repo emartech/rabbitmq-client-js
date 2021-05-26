@@ -24,8 +24,18 @@ const amqpConfig = {
   }
 };
 
+const dummyCrypto = {
+  async encrypt(str) {
+    return str.split('').reverse().join('');
+  },
+  async decrypt(str) {
+    return str.split('').reverse().join('');
+  }
+};
+
 describe('RabbitMQ Consumer with DLX Retry', function () {
   let sandbox = sinon.createSandbox();
+  // eslint-disable-next-line no-unused-vars
   let clock;
   let startProcess;
   let ackStub;
@@ -130,6 +140,42 @@ describe('RabbitMQ Consumer with DLX Retry', function () {
     await rabbitMQConsumer.process();
 
     expect(options.onChannelEstablished).have.been.calledOnce;
+  });
+
+  it('should call onMessage with parsed content and ack message on success', async function () {
+    const message = { content: Buffer.from('{"alma":"fa"}') };
+    const onMessageSpy = sandbox.spy();
+    const configuration = {
+      logger: loggerName,
+      channel: channelName,
+      onMessage: onMessageSpy
+    };
+
+    const rabbitMQConsumer = RabbitMQConsumer.create(amqpConfig, configuration);
+    await rabbitMQConsumer.process();
+    await startProcess(message);
+
+    expect(onMessageSpy).to.have.been.calledWith({ alma: 'fa' });
+    expect(ackStub).have.been.calledWith(message);
+  });
+
+  it('should call onMessage with decrypted parsed content and ack message on success', async function () {
+    const encyptedContent = await dummyCrypto.encrypt(JSON.stringify({ alma: 'fa' }));
+    const message = { content: Buffer.from(encyptedContent) };
+    const onMessageSpy = sandbox.spy();
+    const configuration = {
+      logger: loggerName,
+      channel: channelName,
+      onMessage: onMessageSpy,
+      cryptoLib: dummyCrypto
+    };
+
+    const rabbitMQConsumer = RabbitMQConsumer.create(amqpConfig, configuration);
+    await rabbitMQConsumer.process();
+    await startProcess(message);
+
+    expect(onMessageSpy).to.have.been.calledWith({ alma: 'fa' });
+    expect(ackStub).have.been.calledWith(message);
   });
 
   it('should ack message if it is not parsable as JSON', async function () {

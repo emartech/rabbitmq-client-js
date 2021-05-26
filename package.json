@@ -21,19 +21,19 @@
     "chai-as-promised": "7.1.1",
     "chai-string": "1.5.0",
     "chai-subset": "1.6.0",
-    "eslint": "7.22.0",
+    "eslint": "7.27.0",
     "eslint-config-emarsys": "5.1.0",
-    "eslint-plugin-mocha": "8.1.0",
-    "mocha": "8.3.2",
-    "semantic-release": "17.4.2",
-    "sinon": "9.2.4",
-    "sinon-chai": "3.5.0"
+    "eslint-plugin-mocha": "8.2.0",
+    "mocha": "8.4.0",
+    "semantic-release": "17.4.3",
+    "sinon": "11.1.0",
+    "sinon-chai": "3.7.0"
   },
   "dependencies": {
     "@emartech/json-logger": "3.4.0",
-    "@emartech/object-batcher-js": "1.4.0",
-    "amqplib": "0.7.1",
-    "dotenv": "8.2.0",
+    "@emartech/object-batcher-js": "1.4.1",
+    "amqplib": "0.8.0",
+    "dotenv": "10.0.0",
     "lodash": "4.17.21"
   }
 }

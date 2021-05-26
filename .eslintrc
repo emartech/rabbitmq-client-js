@@ -1,18 +1,14 @@
 {
   "root": true,
-  "extends": [
-    "emarsys"
-  ],
-  "plugins": [
-    "mocha"
-  ],
+  "extends": ["emarsys"],
+  "plugins": ["mocha"],
   "env": {
     "es6": true,
     "node": true,
     "mocha": true
   },
   "parserOptions": {
-    "ecmaVersion": 8
+    "ecmaVersion": 10
   },
   "globals": {
     "inject": true,

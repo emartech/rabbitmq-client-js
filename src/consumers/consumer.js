@@ -18,6 +18,7 @@ class RabbitMqConsumer {
     this._queueOptions = configuration.queueOptions || {};
     this._amqpConfig = amqpConfig;
     this._logRetriableErrorContent = configuration.logRetriableErrorContent || false;
+    this._cryptoLib = configuration.cryptoLib;
   }
 
   async process() {
@@ -30,17 +31,17 @@ class RabbitMqConsumer {
       await channel.prefetch(this._prefetchCount);
       await this._onChannelEstablished(channel);
 
-      channel.on('error', function(err) {
+      channel.on('error', function (err) {
         logger.fromError('[AMQP] Channel error', err);
         throw new Error('[AMQP] Channel error');
       });
 
-      channel.on('close', function() {
+      channel.on('close', function () {
         logger.info('[AMQP] Channel close');
         process.exit(1);
       });
 
-      const { consumerTag } = await channel.consume(this._channel, async message => {
+      const { consumerTag } = await channel.consume(this._channel, async (message) => {
         let autoNackTime;
         if (typeof this._autoNackTime === 'number') {
           autoNackTime = setTimeout(() => {
@@ -52,7 +53,13 @@ class RabbitMqConsumer {
         let content = {};
 
         try {
-          content = JSON.parse(message.content.toString());
+          if (this._cryptoLib) {
+            const rawContent = await this._cryptoLib.decrypt(message.content.toString());
+            content = JSON.parse(rawContent);
+          } else {
+            content = JSON.parse(message.content.toString());
+          }
+
           await this._onMessage(content, message);
           if (autoNackTime) clearTimeout(autoNackTime);
           await channel.ack(message);

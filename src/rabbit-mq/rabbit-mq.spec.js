@@ -8,9 +8,17 @@ const chaiAsPromised = require('chai-as-promised');
 const sinonChai = require('sinon-chai');
 const EventEmitter = require('events');
 
-
 chai.use(sinonChai);
 chai.use(chaiAsPromised);
+
+const dummyCrypto = {
+  async encrypt(str) {
+    return str.split('').reverse().join('');
+  },
+  async decrypt(str) {
+    return str.split('').reverse().join('');
+  }
+};
 
 const expect = chai.expect;
 
@@ -61,20 +69,18 @@ describe('RabbitMQ', () => {
 
   it('#connect should call amqp connect with the right parameters on default connection', async () => {
     await rabbitMq.connect();
-    expect(amqp.connect).to.have.been.calledWith(
-      'amqp://test:secret@192.168.40.10:5672/fakeDefault',
-      { servername: '192.168.40.10' }
-    );
+    expect(amqp.connect).to.have.been.calledWith('amqp://test:secret@192.168.40.10:5672/fakeDefault', {
+      servername: '192.168.40.10'
+    });
   });
 
   it('#connect should call amqp connect with the right parameters on no-default connection', async () => {
     rabbitMq = new RabbitMq(config, queueName, 'lobab');
 
     await rabbitMq.connect();
-    expect(amqp.connect).to.have.been.calledWith(
-      'amqp://test:secret@192.168.40.254:5672/fakeLobab',
-      { servername: '192.168.40.254' }
-    );
+    expect(amqp.connect).to.have.been.calledWith('amqp://test:secret@192.168.40.254:5672/fakeLobab', {
+      servername: '192.168.40.254'
+    });
   });
 
   it('#connect cache the connection', async () => {
@@ -151,9 +157,12 @@ describe('RabbitMQ', () => {
     const assertQueueValueDefault = { fake: 123 };
     const assertQueueValueLobab = { fakeLobab: 123 };
 
-    channelMock.assertQueue = sandbox.stub()
-      .onCall(0).resolves(assertQueueValueDefault)
-      .onCall(1).resolves(assertQueueValueLobab);
+    channelMock.assertQueue = sandbox
+      .stub()
+      .onCall(0)
+      .resolves(assertQueueValueDefault)
+      .onCall(1)
+      .resolves(assertQueueValueLobab);
 
     const channels = {};
     const assertedQueues = {};
@@ -191,8 +200,20 @@ describe('RabbitMQ', () => {
     const data = { test: 'data' };
     await rabbitMq.connect();
     await rabbitMq.createChannel();
-    rabbitMq.insert(data);
+    await rabbitMq.insert(data);
     expect(channelMock.sendToQueue).to.have.been.calledWith(queueName, Buffer.from(JSON.stringify(data)));
+  });
+
+  it('#insert should call sentToQueue and encrypt payload', async () => {
+    rabbitMq = new RabbitMq(config, queueName, 'default', dummyCrypto);
+
+    const data = { test: 'data' };
+    const encryptedData = await dummyCrypto.encrypt(JSON.stringify(data));
+
+    await rabbitMq.connect();
+    await rabbitMq.createChannel();
+    await rabbitMq.insert(data);
+    expect(channelMock.sendToQueue).to.have.been.calledWith(queueName, Buffer.from(encryptedData));
   });
 
   it('#insert should support options parameter', async () => {
@@ -200,7 +221,7 @@ describe('RabbitMQ', () => {
     const options = { test: 'ing' };
     await rabbitMq.connect();
     await rabbitMq.createChannel();
-    rabbitMq.insert(data, options);
+    await rabbitMq.insert(data, options);
     expect(channelMock.sendToQueue).to.have.been.calledWith(queueName, Buffer.from(JSON.stringify(data)), options);
   });
 
@@ -210,12 +231,26 @@ describe('RabbitMQ', () => {
     await rabbitMq.connect();
     await rabbitMq.createChannel();
 
-    rabbitMq.insertWithGroupBy(groupBy, data);
-    expect(channelMock.sendToQueue).to.have.been.calledWith(
-      queueName,
-      Buffer.from(JSON.stringify(data)),
-      { headers: { groupBy } }
-    );
+    await rabbitMq.insertWithGroupBy(groupBy, data);
+    expect(channelMock.sendToQueue).to.have.been.calledWith(queueName, Buffer.from(JSON.stringify(data)), {
+      headers: { groupBy }
+    });
+  });
+
+  it('#insertWithGroupBy should call sentToQueue and encrypt payload', async () => {
+    rabbitMq = new RabbitMq(config, queueName, 'default', dummyCrypto);
+
+    const groupBy = 'me.login';
+    const data = { test: 'data' };
+    const encryptedData = await dummyCrypto.encrypt(JSON.stringify(data));
+
+    await rabbitMq.connect();
+    await rabbitMq.createChannel();
+
+    await rabbitMq.insertWithGroupBy(groupBy, data);
+    expect(channelMock.sendToQueue).to.have.been.calledWith(queueName, Buffer.from(encryptedData), {
+      headers: { groupBy }
+    });
   });
 
   it('#insertWithGroupBy should support options parameter', async () => {
@@ -225,7 +260,7 @@ describe('RabbitMQ', () => {
     await rabbitMq.connect();
     await rabbitMq.createChannel();
 
-    rabbitMq.insertWithGroupBy(groupBy, data, options);
+    await rabbitMq.insertWithGroupBy(groupBy, data, options);
     expect(channelMock.sendToQueue).to.have.been.calledWith(
       queueName,
       Buffer.from(JSON.stringify(data)),
@@ -258,7 +293,7 @@ describe('RabbitMQ', () => {
     expect(channelMock.deleteQueue).to.have.been.calledWith(queueName);
   });
 
-  it('#waitForConfirms should wait for message acks by calling waitForConfirms on the channel', async function() {
+  it('#waitForConfirms should wait for message acks by calling waitForConfirms on the channel', async function () {
     const rabbitMq = new RabbitMq(config, 'some-queue', 'confirmChannel');
 
     await rabbitMq.connect();
@@ -268,15 +303,15 @@ describe('RabbitMQ', () => {
     expect(channelMock.waitForConfirms).to.have.been.called;
   });
 
-  it('#waitForConfirms should throw an exception when we are not using confirmChannel', async function() {
+  it('#waitForConfirms should throw an exception when we are not using confirmChannel', async function () {
     await rabbitMq.connect();
     await rabbitMq.createChannel();
-    await expect(rabbitMq.waitForConfirms())
-      .to.be.rejectedWith('Waiting for confirmation is only supported with confirmation channels');
+    await expect(rabbitMq.waitForConfirms()).to.be.rejectedWith(
+      'Waiting for confirmation is only supported with confirmation channels'
+    );
   });
 
   describe('with dead channel', () => {
-
     it('should remove channel from the cache', async () => {
       const channels = {};
       const assertedQueues = {};
@@ -291,6 +326,5 @@ describe('RabbitMQ', () => {
       expect(channels.default).to.be.undefined;
       expect(assertedQueues[connectionType][queueName]).to.be.undefined;
     });
-
   });
 });

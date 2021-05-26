@@ -8,11 +8,12 @@ const amqp = require('amqplib');
 const logger = require('@emartech/json-logger')('rabbit-mq-client');
 
 class RabbitMq {
-  constructor(amqpConfig, queueName, connectionType = 'default') {
+  constructor(amqpConfig, queueName, connectionType = 'default', cryptoLib) {
     this.queueName = queueName;
     this._amqpConfig = amqpConfig;
     this._connectionType = connectionType;
     this._connection = null;
+    this._cryptoLib = cryptoLib;
   }
 
   async connect(connections = {}) {
@@ -45,7 +46,7 @@ class RabbitMq {
     this._channel = await channels[this._connectionType];
 
     if (registerCloseListener) {
-      this._channel.on('error', error => {
+      this._channel.on('error', (error) => {
         logger.fromError('Channel error', error);
       });
 
@@ -88,8 +89,16 @@ class RabbitMq {
     await this._channel.deleteQueue(this.queueName);
   }
 
-  insert(data, options = {}) {
-    return this._channel.sendToQueue(this.queueName, Buffer.from(JSON.stringify(data)), options);
+  async insert(data, options = {}) {
+    let payload;
+
+    if (this._cryptoLib) {
+      payload = await this._cryptoLib.encrypt(JSON.stringify(data));
+    } else {
+      payload = JSON.stringify(data);
+    }
+
+    return this._channel.sendToQueue(this.queueName, Buffer.from(payload), options);
   }
 
   insertWithGroupBy(groupBy, data, options = {}) {

@@ -24,6 +24,7 @@ class RabbitMqBatchConsumer {
     });
     this._inProgress = 0;
     this._consumerCanceled = false;
+    this._cryptoLib = configuration.cryptoLib;
 
     if (this._prefetchCount < this._batchSize) {
       throw new Error('Batch Consumer prefetchCount should be larger than batchSize');
@@ -34,24 +35,35 @@ class RabbitMqBatchConsumer {
     try {
       await this._setupRabbitMqChannel();
       await this._onChannelEstablished(this._rabbitMqChannel);
-      this._consumer = await this._rabbitMqChannel.consume(this._channel, message => {
+      this._consumer = await this._rabbitMqChannel.consume(this._channel, (message) => {
         this._inProgress++;
         const groupBy = message.properties.headers.groupBy;
         this._objectBatcher.add(groupBy, message);
       });
 
-      process.once('SIGTERM', (function() {
-        this._rabbitMqChannel.cancel(this._consumer.consumerTag);
-      }).bind(this));
+      process.once(
+        'SIGTERM',
+        function () {
+          this._rabbitMqChannel.cancel(this._consumer.consumerTag);
+        }.bind(this)
+      );
     } catch (error) {
       this._logger.fromError('Consumer initialization error', error);
     }
   }
 
   _handleCollectedMessages(groupBy, messageObjects) {
+    if (this._cryptoLib) {
+      return this._handleEncryptedCollectedMessages(groupBy, messageObjects);
+    } else {
+      return this._handleSimpleCollectedMessages(groupBy, messageObjects);
+    }
+  }
+
+  _handleSimpleCollectedMessages(groupBy, messageObjects) {
     let contents;
     try {
-      contents = messageObjects.map(message => JSON.parse(message.content.toString()));
+      contents = messageObjects.map((message) => JSON.parse(message.content.toString()));
     } catch (error) {
       return this._consumerError(error, groupBy, messageObjects);
     }
@@ -59,10 +71,32 @@ class RabbitMqBatchConsumer {
       .then(() => {
         return this._consumerSuccess(groupBy, messageObjects);
       })
-      .catch(error => {
+      .catch((error) => {
         if (error.retryable) {
           return this._consumerErrorWithDelayedRetry(error, groupBy, messageObjects);
         }
+        return this._consumerError(error, groupBy, messageObjects);
+      });
+  }
+
+  _handleEncryptedCollectedMessages(groupBy, messageObjects) {
+    return Promise.all(messageObjects.map((messsage) => this._cryptoLib.decrypt(messsage.content.toString())))
+      .then((decryptedMessages) => {
+        this._onMessages(
+          groupBy,
+          decryptedMessages.map((message) => JSON.parse(message))
+        )
+          .then(() => {
+            return this._consumerSuccess(groupBy, messageObjects);
+          })
+          .catch((error) => {
+            if (error.retryable) {
+              return this._consumerErrorWithDelayedRetry(error, groupBy, messageObjects);
+            }
+            return this._consumerError(error, groupBy, messageObjects);
+          });
+      })
+      .catch((error) => {
         return this._consumerError(error, groupBy, messageObjects);
       });
   }
@@ -98,7 +132,7 @@ class RabbitMqBatchConsumer {
       group_by: groupBy,
       count: messageObjects.length
     });
-    messageObjects.forEach(message => {
+    messageObjects.forEach((message) => {
       this._rabbitMqChannel.ack(message);
     });
     this._inProgress -= messageObjects.length;
@@ -110,7 +144,7 @@ class RabbitMqBatchConsumer {
       count: messageObjects.length
     });
     return setTimeout(() => {
-      messageObjects.forEach(message => this._rabbitMqChannel.nack(message));
+      messageObjects.forEach((message) => this._rabbitMqChannel.nack(message));
       this._inProgress -= messageObjects.length;
     }, this._retryTime);
   }
@@ -120,7 +154,7 @@ class RabbitMqBatchConsumer {
       group_by: groupBy,
       count: messageObjects.length
     });
-    messageObjects.forEach(message => this._rabbitMqChannel.nack(message, false, false));
+    messageObjects.forEach((message) => this._rabbitMqChannel.nack(message, false, false));
     this._inProgress -= messageObjects.length;
   }
 

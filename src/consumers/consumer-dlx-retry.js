@@ -20,6 +20,7 @@ class RabbitMqConsumer {
       deadLetterRoutingKey: `${configuration.channel}-retry-${this._retryTime}`
     };
     this._amqpConfig = amqpConfig;
+    this._cryptoLib = configuration.cryptoLib;
   }
 
   async process() {
@@ -52,7 +53,13 @@ class RabbitMqConsumer {
         let content = {};
 
         try {
-          content = JSON.parse(message.content.toString());
+          if (this._cryptoLib) {
+            const rawContent = await this._cryptoLib.decrypt(message.content.toString());
+            content = JSON.parse(rawContent);
+          } else {
+            content = JSON.parse(message.content.toString());
+          }
+
           await this._onMessage(content, message);
           await channel.ack(message);
         } catch (error) {

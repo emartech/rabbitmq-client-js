@@ -24,6 +24,15 @@ const amqpConfig = {
   }
 };
 
+const dummyCrypto = {
+  async encrypt(str) {
+    return str.split('').reverse().join('');
+  },
+  async decrypt(str) {
+    return str.split('').reverse().join('');
+  }
+};
+
 describe('RabbitMQ Consumer', function () {
   let sandbox = sinon.createSandbox();
   let clock;
@@ -104,6 +113,40 @@ describe('RabbitMQ Consumer', function () {
     await rabbitMQConsumer.process();
 
     expect(options.onChannelEstablished).have.been.calledOnce;
+  });
+
+  it('should call onMessage with parsed content', async function () {
+    const message = { content: Buffer.from('{"alma":"fa"}') };
+    const onMessageSpy = sandbox.spy();
+    const configuration = {
+      logger: loggerName,
+      channel: channelName,
+      onMessage: onMessageSpy
+    };
+
+    const rabbitMQConsumer = RabbitMQConsumer.create(amqpConfig, configuration);
+    await rabbitMQConsumer.process();
+    await startProcess(message);
+
+    expect(onMessageSpy).to.have.been.calledWith({ alma: 'fa' });
+  });
+
+  it('should call onMessage with decrypted and parsed content in crypto is set', async function () {
+    const encyptedContent = await dummyCrypto.encrypt(JSON.stringify({ alma: 'fa' }));
+    const message = { content: Buffer.from(encyptedContent) };
+    const onMessageSpy = sandbox.spy();
+    const configuration = {
+      logger: loggerName,
+      channel: channelName,
+      onMessage: onMessageSpy,
+      cryptoLib: dummyCrypto
+    };
+
+    const rabbitMQConsumer = RabbitMQConsumer.create(amqpConfig, configuration);
+    await rabbitMQConsumer.process();
+    await startProcess(message);
+
+    expect(onMessageSpy).to.have.been.calledWith({ alma: 'fa' });
   });
 
   it('should not retry when message is not parsable as JSON', async function () {
